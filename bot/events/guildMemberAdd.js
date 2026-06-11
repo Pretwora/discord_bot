@@ -74,7 +74,7 @@ module.exports = {
 
     await writeAuditLog({
       guildId: member.guild.id,
-      actorId: member.user.id,
+      actorId: member.user.username,
       action: 'member_join',
       targetId: member.user.id,
       meta: { targetName: member.user.username },

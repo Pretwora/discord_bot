@@ -34,26 +34,28 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/:id/kick', async (req, res) => {
+  const target = await prisma.member.findUnique({ where: { id: req.params.id } }).catch(() => null);
   req.io.emit('bot:member:kick', { userId: req.params.id, reason: req.body.reason });
   await writeAuditLog({
     guildId: process.env.DISCORD_GUILD_ID,
     actorId: req.user?.username || 'Admin',
     action: 'member_kick',
     targetId: req.params.id,
-    meta: { reason: req.body.reason },
+    meta: { targetName: target?.username || req.params.id, reason: req.body.reason },
     source: 'DASHBOARD',
   });
   res.json({ status: 'queued' });
 });
 
 router.post('/:id/ban', async (req, res) => {
+  const target = await prisma.member.findUnique({ where: { id: req.params.id } }).catch(() => null);
   req.io.emit('bot:member:ban', { userId: req.params.id, reason: req.body.reason });
   await writeAuditLog({
     guildId: process.env.DISCORD_GUILD_ID,
     actorId: req.user?.username || 'Admin',
     action: 'member_ban',
     targetId: req.params.id,
-    meta: { reason: req.body.reason },
+    meta: { targetName: target?.username || req.params.id, reason: req.body.reason },
     source: 'DASHBOARD',
   });
   res.json({ status: 'queued' });

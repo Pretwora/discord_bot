@@ -45,6 +45,11 @@ router.post('/:id/assign', async (req, res) => {
   const GUILD_ID = process.env.DISCORD_GUILD_ID;
   try {
     await axios.put(`${DISCORD_API}/guilds/${GUILD_ID}/members/${userId}/roles/${req.params.id}`, {}, { headers: botHeaders() });
+    const [role, member] = await Promise.all([
+      prisma.role.findUnique({ where: { id: req.params.id } }).catch(() => null),
+      prisma.member.findUnique({ where: { id: userId } }).catch(() => null),
+    ]);
+    await writeAuditLog({ guildId: GUILD_ID, actorId: req.user?.username || 'Admin', action: 'role_assign', targetId: userId, meta: { targetName: member?.username || userId, roleName: role?.name || req.params.id }, source: 'DASHBOARD' });
     res.json({ status: 'ok' });
   } catch (err) {
     res.status(err.response?.status || 500).json({ error: err.response?.data?.message || err.message });
@@ -55,6 +60,11 @@ router.delete('/:id/assign/:userId', async (req, res) => {
   const GUILD_ID = process.env.DISCORD_GUILD_ID;
   try {
     await axios.delete(`${DISCORD_API}/guilds/${GUILD_ID}/members/${req.params.userId}/roles/${req.params.id}`, { headers: botHeaders() });
+    const [role, member] = await Promise.all([
+      prisma.role.findUnique({ where: { id: req.params.id } }).catch(() => null),
+      prisma.member.findUnique({ where: { id: req.params.userId } }).catch(() => null),
+    ]);
+    await writeAuditLog({ guildId: GUILD_ID, actorId: req.user?.username || 'Admin', action: 'role_unassign', targetId: req.params.userId, meta: { targetName: member?.username || req.params.userId, roleName: role?.name || req.params.id }, source: 'DASHBOARD' });
     res.json({ status: 'ok' });
   } catch (err) {
     res.status(err.response?.status || 500).json({ error: err.response?.data?.message || err.message });

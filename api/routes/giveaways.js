@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { PrismaClient } = require('@prisma/client');
 const requireAuth = require('../middleware/auth');
+const { writeAuditLog } = require('../../bot/utils/auditLog');
 
 const prisma = new PrismaClient();
 
@@ -91,6 +92,8 @@ router.post('/', requireAuth, async (req, res) => {
     // Tell the bot to post the message and schedule end
     req.io?.emit('bot:cmd', { event: 'giveaway:create', giveawayId: giveaway.id });
 
+    await writeAuditLog({ guildId, actorId: req.user?.username || 'Admin', action: 'giveaway_create', targetId: giveaway.id, meta: { targetName: prize, detail: `${winnersCount} победителей` }, source: 'DASHBOARD' });
+
     res.status(201).json(giveaway);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -105,6 +108,7 @@ router.post('/:id/end', requireAuth, async (req, res) => {
     if (g.status !== 'ACTIVE') return res.status(400).json({ error: 'Already ended' });
 
     req.io?.emit('bot:cmd', { event: 'giveaway:end', giveawayId: req.params.id });
+    await writeAuditLog({ guildId: g.guildId, actorId: req.user?.username || 'Admin', action: 'giveaway_end', targetId: g.id, meta: { targetName: g.prize }, source: 'DASHBOARD' });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -139,6 +143,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     });
 
     req.io?.emit('bot:cmd', { event: 'giveaway:cancel', giveawayId: req.params.id });
+    await writeAuditLog({ guildId: g.guildId, actorId: req.user?.username || 'Admin', action: 'giveaway_cancel', targetId: g.id, meta: { targetName: g.prize }, source: 'DASHBOARD' });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

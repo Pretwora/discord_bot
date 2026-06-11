@@ -3,23 +3,28 @@ import { useQuery } from '@tanstack/react-query';
 import {
   UserPlus, UserMinus, ShieldBan, MessageSquare,
   Hash, Shield, Settings, Clock, ChevronDown, Search,
-  ClipboardList, RefreshCw, AlertTriangle
+  ClipboardList, RefreshCw, AlertTriangle, Gift, ShieldCheck, ShieldOff
 } from 'lucide-react';
 import api from '../lib/api';
 
 const ACTION_TYPES = {
-  member_join:     { icon: UserPlus,      color: 'var(--discord-green)',        label: 'Вход на сервер' },
-  member_leave:    { icon: UserMinus,     color: 'var(--discord-text-muted)',   label: 'Покинул сервер' },
-  member_ban:      { icon: ShieldBan,     color: 'var(--discord-red)',          label: 'Бан' },
-  member_kick:     { icon: UserMinus,     color: 'var(--discord-yellow)',       label: 'Кик' },
-  member_timeout:  { icon: Clock,         color: 'var(--discord-yellow)',       label: 'Мут' },
-  member_warn:     { icon: AlertTriangle, color: '#f97316',                     label: 'Предупреждение' },
-  message_delete:  { icon: MessageSquare, color: 'var(--discord-red)',          label: 'Удаление сообщения' },
-  channel_create:  { icon: Hash,          color: 'var(--discord-green)',        label: 'Создание канала' },
-  channel_delete:  { icon: Hash,          color: 'var(--discord-red)',          label: 'Удаление канала' },
-  role_create:     { icon: Shield,        color: 'var(--discord-green)',        label: 'Создание роли' },
-  role_update:     { icon: Shield,        color: 'var(--discord-blurple)',      label: 'Изменение роли' },
-  settings_update: { icon: Settings,      color: 'var(--discord-blurple)',      label: 'Настройки' },
+  member_join:      { icon: UserPlus,      color: 'var(--discord-green)',        label: 'Вход на сервер' },
+  member_leave:     { icon: UserMinus,     color: 'var(--discord-text-muted)',   label: 'Покинул сервер' },
+  member_ban:       { icon: ShieldBan,     color: 'var(--discord-red)',          label: 'Бан' },
+  member_kick:      { icon: UserMinus,     color: 'var(--discord-yellow)',       label: 'Кик' },
+  member_timeout:   { icon: Clock,         color: 'var(--discord-yellow)',       label: 'Мут' },
+  member_warn:      { icon: AlertTriangle, color: '#f97316',                     label: 'Предупреждение' },
+  message_delete:   { icon: MessageSquare, color: 'var(--discord-red)',          label: 'Удаление сообщения' },
+  channel_create:   { icon: Hash,          color: 'var(--discord-green)',        label: 'Создание канала' },
+  channel_delete:   { icon: Hash,          color: 'var(--discord-red)',          label: 'Удаление канала' },
+  role_create:      { icon: Shield,        color: 'var(--discord-green)',        label: 'Создание роли' },
+  role_delete:      { icon: Shield,        color: 'var(--discord-red)',          label: 'Удаление роли' },
+  role_assign:      { icon: ShieldCheck,   color: 'var(--discord-green)',        label: 'Выдача роли' },
+  role_unassign:    { icon: ShieldOff,     color: 'var(--discord-yellow)',       label: 'Снятие роли' },
+  settings_update:  { icon: Settings,      color: 'var(--discord-blurple)',      label: 'Настройки' },
+  giveaway_create:  { icon: Gift,          color: 'var(--discord-green)',        label: 'Розыгрыш создан' },
+  giveaway_end:     { icon: Gift,          color: 'var(--discord-yellow)',       label: 'Розыгрыш завершён' },
+  giveaway_cancel:  { icon: Gift,          color: 'var(--discord-red)',          label: 'Розыгрыш отменён' },
 };
 
 const DEFAULT_DEF = { icon: ClipboardList, color: 'var(--discord-blurple)', label: 'Действие' };
@@ -37,13 +42,13 @@ function groupByDate(logs) {
 function formatDate(dateStr) {
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  if (dateStr === today) return 'Today';
-  if (dateStr === yesterday) return 'Yesterday';
-  return new Date(dateStr).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (dateStr === today) return 'Сегодня';
+  if (dateStr === yesterday) return 'Вчера';
+  return new Date(dateStr).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function timeStr(dateStr) {
-  return new Date(dateStr).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+  return new Date(dateStr).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function AuditLog() {
@@ -165,6 +170,9 @@ export default function AuditLog() {
                   const targetDisplay = meta.targetName ?? log.targetId ?? '';
                   const detail = meta.reason ?? meta.detail ?? '';
 
+                  const roleName = meta.roleName;
+                  const msgContent = meta.content;
+
                   return (
                     <div
                       key={log.id}
@@ -191,13 +199,22 @@ export default function AuditLog() {
                               <span className="text-sm text-white">{targetDisplay}</span>
                             </>
                           )}
+                          {roleName && (
+                            <>
+                              <span className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>роль</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: 'rgba(88,101,242,0.2)', color: 'var(--discord-blurple)' }}>{roleName}</span>
+                            </>
+                          )}
                         </div>
                         {detail && (
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--discord-text-muted)' }}>{detail}</p>
+                          <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--discord-text-muted)' }}>{detail}</p>
                         )}
-                        {log.source && log.source !== 'BOT_COMMAND' && (
-                          <span className="text-xs px-1 rounded mt-0.5 inline-block" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--discord-text-muted)' }}>
-                            {log.source}
+                        {msgContent && (
+                          <p className="text-xs mt-0.5 italic truncate" style={{ color: 'var(--discord-text-muted)' }}>«{msgContent}»</p>
+                        )}
+                        {log.source === 'DASHBOARD' && (
+                          <span className="text-xs px-1 rounded mt-0.5 inline-block" style={{ backgroundColor: 'rgba(88,101,242,0.12)', color: 'var(--discord-blurple)' }}>
+                            dashboard
                           </span>
                         )}
                       </div>

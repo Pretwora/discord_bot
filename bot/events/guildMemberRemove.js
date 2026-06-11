@@ -7,7 +7,7 @@ module.exports = {
   async execute(member) {
     await writeAuditLog({
       guildId: member.guild.id,
-      actorId: member.user.id,
+      actorId: member.user.username,
       action: 'member_leave',
       targetId: member.user.id,
       meta: { targetName: member.user.username },

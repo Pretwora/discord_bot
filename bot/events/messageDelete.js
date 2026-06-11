@@ -44,7 +44,7 @@ module.exports = {
     if (author) {
       await writeAuditLog({
         guildId: message.guild.id,
-        actorId: author.id,
+        actorId: author.username,
         action: 'message_delete',
         targetId: channel.id,
         meta: { targetName: `#${channel.name}`, content: content.slice(0, 200) },

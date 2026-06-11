@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const auth   = require('../middleware/auth');
 const prisma = require('../../config/database');
+const { writeAuditLog } = require('../../bot/utils/auditLog');
 
 router.use(auth);
 
@@ -33,6 +34,13 @@ router.patch('/', async (req, res) => {
         ...(prefix !== undefined ? { prefix } : {}),
         settings: JSON.stringify(merged),
       },
+    });
+    await writeAuditLog({
+      guildId: GUILD_ID(),
+      actorId: req.user?.username || 'Admin',
+      action: 'settings_update',
+      meta: { detail: Object.keys(req.body).join(', ') },
+      source: 'DASHBOARD',
     });
     res.json({ ok: true });
   } catch (err) {
