@@ -1,8 +1,11 @@
 const { io } = require('socket.io-client');
 const logger = require('../config/logger');
-const RoleManager   = require('./managers/RoleManager');
+const RoleManager    = require('./managers/RoleManager');
 const ChannelManager = require('./managers/ChannelManager');
 const MemberManager  = require('./managers/MemberManager');
+const { postGiveaway, endGiveaway, rerollGiveaway, scheduleEnd } = require('./utils/giveawayManager');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 module.exports = function connectDashboardSocket(client) {
   const API_URL = process.env.VITE_API_URL || 'http://localhost:3001';
@@ -127,6 +130,36 @@ module.exports = function connectDashboardSocket(client) {
     } catch (err) {
       logger.error(`bot:member:ban failed: ${err.message}`);
       socket.emit('bot:ack', { event: 'bot:member:ban', status: 'error', message: err.message });
+    }
+  });
+
+  // ── Giveaways ──────────────────────────────────────────────────────
+  socket.on('bot:cmd', async ({ event, giveawayId, count }) => {
+    try {
+      if (event === 'giveaway:create') {
+        const giveaway = await prisma.giveaway.findUnique({ where: { id: giveawayId } });
+        if (giveaway) {
+          await postGiveaway(client, giveaway);
+          scheduleEnd(client, giveaway);
+        }
+      } else if (event === 'giveaway:end') {
+        await endGiveaway(client, giveawayId);
+      } else if (event === 'giveaway:reroll') {
+        await rerollGiveaway(client, giveawayId, count ?? 1);
+      } else if (event === 'giveaway:cancel') {
+        const g = await prisma.giveaway.findUnique({ where: { id: giveawayId } });
+        if (g?.messageId) {
+          const guild = await client.guilds.fetch(g.guildId).catch(() => null);
+          const channel = await guild?.channels.fetch(g.channelId).catch(() => null);
+          const msg = await channel?.messages.fetch(g.messageId).catch(() => null);
+          if (msg) {
+            const { buildEmbed, buildRow } = require('./utils/giveawayManager');
+            await msg.edit({ embeds: [buildEmbed({ ...g, status: 'CANCELLED' }, 0)], components: [buildRow(giveawayId, true)] });
+          }
+        }
+      }
+    } catch (err) {
+      logger.error(`bot:cmd (${event}) failed: ${err.message}`);
     }
   });
 

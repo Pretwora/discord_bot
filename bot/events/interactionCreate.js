@@ -1,8 +1,59 @@
 const logger = require('../../config/logger');
+const { PrismaClient } = require('@prisma/client');
+const { refreshMessage } = require('../utils/giveawayManager');
+
+const prisma = new PrismaClient();
 
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
+    // ── Giveaway enter button ──────────────────────────────────────────────
+    if (interaction.isButton() && interaction.customId.startsWith('giveaway_enter_')) {
+      const giveawayId = interaction.customId.replace('giveaway_enter_', '');
+      try {
+        const giveaway = await prisma.giveaway.findUnique({ where: { id: giveawayId } });
+
+        if (!giveaway || giveaway.status !== 'ACTIVE') {
+          return interaction.reply({ content: '❌ Этот розыгрыш уже завершён.', ephemeral: true });
+        }
+        if (new Date(giveaway.endsAt) <= new Date()) {
+          return interaction.reply({ content: '❌ Время розыгрыша истекло.', ephemeral: true });
+        }
+
+        // Check required role
+        if (giveaway.requiredRoleId) {
+          const member = await interaction.guild.members.fetch(interaction.user.id);
+          if (!member.roles.cache.has(giveaway.requiredRoleId)) {
+            return interaction.reply({
+              content: `❌ Для участия нужна роль <@&${giveaway.requiredRoleId}>.`,
+              ephemeral: true,
+            });
+          }
+        }
+
+        // Try to register entry (unique constraint prevents duplicate)
+        const existing = await prisma.giveawayEntry.findUnique({
+          where: { giveawayId_userId: { giveawayId, userId: interaction.user.id } },
+        });
+
+        if (existing) {
+          return interaction.reply({ content: '✅ Ты уже участвуешь в этом розыгрыше!', ephemeral: true });
+        }
+
+        await prisma.giveawayEntry.create({
+          data: { giveawayId, userId: interaction.user.id },
+        });
+
+        // Update embed count (fire & forget)
+        refreshMessage(client, giveaway).catch(() => {});
+
+        return interaction.reply({ content: '🎉 Ты записан! Удачи!', ephemeral: true });
+      } catch (err) {
+        logger.error(`giveaway_enter failed: ${err.message}`);
+        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
+      }
+    }
+
     // ── Self-role buttons ──────────────────────────────────────────────────
     if (interaction.isButton() && interaction.customId.startsWith('role_toggle_')) {
       const roleId = interaction.customId.replace('role_toggle_', '');

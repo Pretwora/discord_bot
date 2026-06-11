@@ -16,11 +16,12 @@ model Guild {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  channels  Channel[]
-  roles     Role[]
-  members   Member[]
-  auditLogs AuditLog[]
-  autoRules AutoRule[]
+  channels   Channel[]
+  roles      Role[]
+  members    Member[]
+  auditLogs  AuditLog[]
+  autoRules  AutoRule[]
+  giveaways  Giveaway[]
 }
 
 model Channel {
@@ -108,3 +109,47 @@ model AutoRule {
 
   guild Guild @relation(fields: [guildId], references: [id])
 }
+
+model Giveaway {
+  id             String    @id @default(uuid())
+  guildId        String
+  channelId      String
+  messageId      String?
+  prize          String
+  description    String?
+  winnersCount   Int       @default(1)
+  endsAt         DateTime
+  endedAt        DateTime?
+  status         String    @default("ACTIVE") // ACTIVE | ENDED | CANCELLED
+  hostedBy       String
+  requiredRoleId String?
+  bonusEntries   Boolean   @default(false)    // будущее: доп. шансы за уровень
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  guild   Guild            @relation(fields: [guildId], references: [id])
+  entries GiveawayEntry[]
+  winners GiveawayWinner[]
+}
+
+model GiveawayEntry {
+  id         String   @id @default(uuid())
+  giveawayId String
+  userId     String
+  tickets    Int      @default(1) // будущее: бонусные шансы за уровень
+  createdAt  DateTime @default(now())
+
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+
+  @@unique([giveawayId, userId])
+}
+
+model GiveawayWinner {
+  id         String   @id @default(uuid())
+  giveawayId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+}
+

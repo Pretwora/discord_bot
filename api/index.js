@@ -32,6 +32,7 @@ app.use('/api/v1/ai',       require('./routes/ai'));
 app.use('/api/v1/warnings',     require('./routes/warnings'));
 app.use('/api/v1/leaderboard',  require('./routes/leaderboard'));
 app.use('/api/v1/settings',     require('./routes/settings'));
+app.use('/api/v1/giveaways',    require('./routes/giveaways'));
 
 // Health check
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));

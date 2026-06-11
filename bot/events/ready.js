@@ -1,6 +1,7 @@
 const { ChannelType } = require('discord.js');
 const prisma = require('../../config/database');
 const logger = require('../../config/logger');
+const { restoreGiveaways } = require('../utils/giveawayManager');
 
 function channelTypeStr(type) {
   if (type === ChannelType.GuildVoice || type === ChannelType.GuildStageVoice) return 'VOICE';
@@ -93,5 +94,8 @@ module.exports = {
 
     // Export syncGuild so socket.js can trigger manual re-sync
     client._syncGuild = () => syncGuild(guild);
+
+    // Restore giveaway schedulers that were active before restart
+    await restoreGiveaways(client);
   },
 };

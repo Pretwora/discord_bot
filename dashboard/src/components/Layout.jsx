@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard, Hash, Shield, Users,
-  ClipboardList, Settings, Bot, LogOut, RefreshCw
+  ClipboardList, Settings, Bot, LogOut, RefreshCw, Gift
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../hooks/useSocket';
@@ -14,8 +14,9 @@ const navItems = [
   { to: '/',          icon: LayoutDashboard, label: 'Overview'  },
   { to: '/channels',  icon: Hash,            label: 'Channels'  },
   { to: '/roles',     icon: Shield,          label: 'Roles'     },
-  { to: '/members',   icon: Users,           label: 'Members'   },
-  { to: '/audit-log', icon: ClipboardList,   label: 'Audit Log' },
+  { to: '/members',    icon: Users,           label: 'Members'   },
+  { to: '/giveaways',  icon: Gift,            label: 'Giveaways' },
+  { to: '/audit-log',  icon: ClipboardList,   label: 'Audit Log' },
   { to: '/settings',  icon: Settings,        label: 'Settings'  },
 ];
 
