@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, UserX, ShieldBan, X, MoreVertical, Users, RefreshCw, Shield, Plus, Check,
-  AlertTriangle, Trash2, User, MessageSquare, Calendar, Clock
+  AlertTriangle, Trash2, User, MessageSquare, Calendar, Clock, Copy
 } from 'lucide-react';
 import api from '../lib/api';
 import { useSocket } from '../hooks/useSocket';
@@ -405,6 +405,30 @@ function XpBadge({ xp, level }) {
   );
 }
 
+function CopyId({ id }) {
+  const [copied, setCopied] = useState(false);
+  function copy(e) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+  return (
+    <button
+      onClick={copy}
+      title="Скопировать Discord ID"
+      className="flex items-center gap-1.5 group/id px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
+      style={{ color: 'var(--discord-text-muted)', fontFamily: 'monospace', fontSize: '0.7rem' }}
+    >
+      <span className="truncate max-w-[110px]">{id}</span>
+      {copied
+        ? <Check size={11} style={{ color: 'var(--discord-green)', flexShrink: 0 }} />
+        : <Copy size={11} className="opacity-0 group-hover/id:opacity-100 transition-opacity flex-shrink-0" />}
+    </button>
+  );
+}
+
 export default function Members() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
@@ -461,7 +485,8 @@ export default function Members() {
   const filtered = members
     .filter(m =>
       (m.username ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (m.nickname ?? '').toLowerCase().includes(search.toLowerCase())
+      (m.nickname ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (m.id ?? '').includes(search)
     )
     .sort((a, b) => (STATUS_ORDER[a.onlineStatus] ?? 3) - (STATUS_ORDER[b.onlineStatus] ?? 3));
 
@@ -519,7 +544,7 @@ export default function Members() {
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--discord-border)' }}>
-                {['Участник', 'Ник', 'Роли', 'Сообщений', 'XP / Уровень', 'Вступил', 'Варны', ''].map(h => (
+                {['Участник', 'Discord ID', 'Ник', 'Роли', 'Сообщений', 'XP / Уровень', 'Вступил', 'Варны', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--discord-text-muted)' }}>{h}</th>
                 ))}
               </tr>
@@ -539,6 +564,9 @@ export default function Members() {
                         </div>
                         <p className="text-sm font-medium text-white">{member.username}</p>
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <CopyId id={member.id} />
                     </td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--discord-text-muted)' }}>
                       {member.nickname || '—'}
