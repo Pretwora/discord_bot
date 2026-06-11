@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Bot, Shield, Star, Save, Hash,
-  CheckCircle, AlertTriangle, RefreshCw, Sliders
+  CheckCircle, AlertTriangle, RefreshCw, Sliders, BarChart2, ChevronDown
 } from 'lucide-react';
 import api from '../lib/api';
 
 const TABS = [
-  { id: 'general',    icon: Sliders, label: 'Основные' },
-  { id: 'xp',         icon: Star,    label: 'XP и уровни' },
-  { id: 'moderation', icon: Shield,  label: 'Модерация' },
-  { id: 'bot',        icon: Bot,     label: 'Бот' },
+  { id: 'general',    icon: Sliders,   label: 'Основные'    },
+  { id: 'xp',         icon: Star,      label: 'XP и уровни' },
+  { id: 'moderation', icon: Shield,    label: 'Модерация'   },
+  { id: 'reports',    icon: BarChart2, label: 'Отчёты'      },
+  { id: 'bot',        icon: Bot,       label: 'Бот'         },
 ];
 
 function ToggleSwitch({ checked, onChange }) {
@@ -62,10 +63,61 @@ const DEFAULTS = {
   maxMentions: 5,
   maxLinks: 3,
   warnAction: 'warn',
+  weeklyReportEnabled: true,
+  weeklyReportChannelId: '',
   botActivity: 'Pretwora DS',
   botActivityType: 'WATCHING',
   botStatus: 'online',
 };
+
+function ReportsTab({ form, set }) {
+  const { data: channels = [] } = useQuery({
+    queryKey: ['channels'],
+    queryFn: () => api.get('/api/v1/channels').then(r => r.data),
+  });
+
+  const textChannels = channels.filter(c => c.type === 'TEXT' || c.type === 'text' || c.type === 'ANNOUNCEMENT');
+
+  return (
+    <div>
+      <SectionHeader>Еженедельный отчёт</SectionHeader>
+
+      <SettingRow label="Включить отчёт" description="Каждое воскресенье в 19:00 бот публикует сводку недели">
+        <ToggleSwitch checked={!!form.weeklyReportEnabled} onChange={v => set('weeklyReportEnabled')(v)} />
+      </SettingRow>
+
+      <SettingRow label="Канал для отчёта" description="Куда публиковать еженедельную статистику">
+        <div className="relative">
+          <select
+            className="discord-input appearance-none pr-7"
+            style={{ width: 220 }}
+            value={form.weeklyReportChannelId || ''}
+            onChange={e => set('weeklyReportChannelId')(e)}
+          >
+            <option value="">Не выбран</option>
+            {textChannels.map(c => (
+              <option key={c.id} value={c.id}>#{c.name}</option>
+            ))}
+          </select>
+          <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--discord-text-muted)' }} />
+        </div>
+      </SettingRow>
+
+      <div className="mt-6 p-4 rounded-lg space-y-2" style={{ backgroundColor: 'rgba(88,101,242,0.08)', border: '1px solid rgba(88,101,242,0.2)' }}>
+        <p className="text-sm font-medium text-white">Что входит в отчёт</p>
+        <ul className="text-xs space-y-1" style={{ color: 'var(--discord-text-muted)' }}>
+          <li>🏆 Топ-3 участников по XP</li>
+          <li>👋 Новые участники за неделю</li>
+          <li>📈 Общая статистика сервера</li>
+          <li>🎁 Завершённые розыгрыши</li>
+        </ul>
+        <p className="text-xs mt-2" style={{ color: 'var(--discord-text-muted)' }}>
+          Для немедленного запуска используй <code className="px-1 py-0.5 rounded" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>/weeklyreport</code> в Discord.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function Settings() {
   const [tab, setTab] = useState('general');
@@ -242,6 +294,10 @@ export default function Settings() {
                 ))}
               </div>
             </div>
+          )}
+
+          {tab === 'reports' && (
+            <ReportsTab form={form} set={set} />
           )}
 
           {tab === 'bot' && (

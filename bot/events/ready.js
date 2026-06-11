@@ -1,7 +1,9 @@
 const { ChannelType } = require('discord.js');
+const schedule = require('node-schedule');
 const prisma = require('../../config/database');
 const logger = require('../../config/logger');
 const { restoreGiveaways } = require('../utils/giveawayManager');
+const { sendWeeklyReport } = require('../utils/weeklyReport');
 
 function channelTypeStr(type) {
   if (type === ChannelType.GuildVoice || type === ChannelType.GuildStageVoice) return 'VOICE';
@@ -97,5 +99,26 @@ module.exports = {
 
     // Restore giveaway schedulers that were active before restart
     await restoreGiveaways(client);
+
+    // Schedule weekly report — runs every Sunday at 19:00 server time
+    // Settings override: weeklyReportEnabled + weeklyReportChannelId
+    schedule.scheduleJob('0 19 * * 0', async () => {
+      try {
+        const dbGuild = await prisma.guild.findUnique({ where: { id: process.env.DISCORD_GUILD_ID } });
+        let settings = {};
+        try { settings = JSON.parse(dbGuild?.settings || '{}'); } catch {}
+
+        if (settings.weeklyReportEnabled === false) return;
+
+        const channelId = settings.weeklyReportChannelId || process.env.LEVEL_UP_CHANNEL_ID;
+        const sent = await sendWeeklyReport(client, channelId);
+        if (sent) logger.info('[WeeklyReport] Sent successfully');
+        else logger.warn('[WeeklyReport] Failed to send — check channelId');
+      } catch (err) {
+        logger.error(`[WeeklyReport] Error: ${err.message}`);
+      }
+    });
+
+    logger.info('[WeeklyReport] Scheduled for Sundays at 19:00');
   },
 };
