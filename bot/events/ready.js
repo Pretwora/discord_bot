@@ -65,11 +65,11 @@ async function syncGuild(guild) {
     );
     await prisma.member.upsert({
       where: { id: member.id },
-      update: { username: member.user.username, nickname: member.nickname ?? null, roles: rolesJson, lastActive: new Date() },
+      update: { username: member.user.username, nickname: member.nickname ?? null, roles: rolesJson, lastActive: new Date(), inGuild: true },
       create: {
         id: member.id, guildId: guild.id, username: member.user.username,
         nickname: member.nickname ?? null, roles: rolesJson,
-        joinedAt: member.joinedAt ?? new Date(),
+        joinedAt: member.joinedAt ?? new Date(), inGuild: true,
       },
     }).catch(e => logger.warn(`[sync] member ${member.user.username}: ${e.message}`));
     memberCount++;

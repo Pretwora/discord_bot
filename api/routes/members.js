@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
   try {
     const { presenceMap } = require('../socket/events');
     const members = await prisma.member.findMany({
-      where: { guildId: process.env.DISCORD_GUILD_ID },
+      where: { guildId: process.env.DISCORD_GUILD_ID, inGuild: true },
       take: Number(limit),
       orderBy: { lastActive: 'desc' },
     });

@@ -66,6 +66,7 @@ model Member {
   xp           Int       @default(0)
   level        Int       @default(0)
   lastActive   DateTime  @default(now())
+  inGuild      Boolean   @default(true)
 
   guild    Guild     @relation(fields: [guildId], references: [id])
   warnings Warning[]

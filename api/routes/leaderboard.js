@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 10, 50);
   try {
     const members = await prisma.member.findMany({
-      where: { guildId: process.env.DISCORD_GUILD_ID },
+      where: { guildId: process.env.DISCORD_GUILD_ID, inGuild: true },
       orderBy: [{ level: 'desc' }, { xp: 'desc' }],
       take: limit,
       select: { id: true, username: true, nickname: true, xp: true, level: true, messageCount: true },

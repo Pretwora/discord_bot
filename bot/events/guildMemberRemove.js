@@ -12,7 +12,7 @@ module.exports = {
       targetId: member.user.id,
       meta: { targetName: member.user.username },
     });
-    await prisma.member.delete({ where: { id: member.id } }).catch(() => {});
+    await prisma.member.update({ where: { id: member.id }, data: { inGuild: false } }).catch(() => {});
     logger.info(`Member left: ${member.user.tag}`);
   },
 };

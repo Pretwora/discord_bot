@@ -64,11 +64,11 @@ module.exports = {
     );
     await prisma.member.upsert({
       where:  { id: member.id },
-      update: { username: member.user.username, nickname: member.nickname ?? null, roles: rolesJson, lastActive: new Date() },
+      update: { username: member.user.username, nickname: member.nickname ?? null, roles: rolesJson, lastActive: new Date(), inGuild: true },
       create: {
         id: member.id, guildId: member.guild.id, username: member.user.username,
         nickname: member.nickname ?? null, roles: rolesJson,
-        joinedAt: member.joinedAt ?? new Date(),
+        joinedAt: member.joinedAt ?? new Date(), inGuild: true,
       },
     }).catch(err => logger.error(`guildMemberAdd DB error: ${err.message}`));
 

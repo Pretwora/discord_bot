@@ -11,17 +11,17 @@ router.get('/overview', async (req, res) => {
     const weekAgo = new Date(Date.now() - 7 * 86400000);
 
     const [memberCount, channelCount, roleCount, joinedToday, xpAgg, activeToday] = await Promise.all([
-      prisma.member.count({ where: { guildId } }),
+      prisma.member.count({ where: { guildId, inGuild: true } }),
       prisma.channel.count({ where: { guildId } }),
       prisma.role.count({ where: { guildId } }),
-      prisma.member.count({ where: { guildId, joinedAt: { gte: todayStart } } }),
-      prisma.member.aggregate({ where: { guildId }, _sum: { xp: true, messageCount: true } }),
-      prisma.member.count({ where: { guildId, lastActive: { gte: todayStart } } }),
+      prisma.member.count({ where: { guildId, inGuild: true, joinedAt: { gte: todayStart } } }),
+      prisma.member.aggregate({ where: { guildId, inGuild: true }, _sum: { xp: true, messageCount: true } }),
+      prisma.member.count({ where: { guildId, inGuild: true, lastActive: { gte: todayStart } } }),
     ]);
 
     // Daily join counts for last 7 days
     const recentMembers = await prisma.member.findMany({
-      where: { guildId, joinedAt: { gte: weekAgo } },
+      where: { guildId, inGuild: true, joinedAt: { gte: weekAgo } },
       select: { joinedAt: true },
     });
     const joinsByDay = {};
