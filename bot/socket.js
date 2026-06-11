@@ -8,7 +8,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 module.exports = function connectDashboardSocket(client) {
-  const API_URL = process.env.VITE_API_URL || 'http://localhost:3001';
+  const API_URL = process.env.API_URL || process.env.VITE_API_URL || 'http://localhost:3001';
   const GUILD_ID = process.env.DISCORD_GUILD_ID;
 
   const socket = io(API_URL, { reconnectionDelay: 3000, reconnectionAttempts: Infinity });
