@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Guild {
+  id        String   @id
+  name      String
+  ownerId   String
+  prefix    String   @default("!")
+  settings  String   @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channels  Channel[]
+  roles     Role[]
+  members   Member[]
+  auditLogs AuditLog[]
+  autoRules AutoRule[]
+}
+
+model Channel {
+  id         String   @id
+  guildId    String
+  name       String
+  type       String   @default("TEXT")
+  categoryId String?
+  position   Int      @default(0)
+  topic      String?
+  slowmode   Int      @default(0)
+  isTemp     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [id])
+}
+
+model Role {
+  id          String   @id
+  guildId     String
+  name        String
+  color       String   @default("#000000")
+  permissions String   @default("0")
+  hoist       Boolean  @default(false)
+  mentionable Boolean  @default(false)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [id])
+}
+
+model Member {
+  id           String    @id
+  guildId      String
+  username     String
+  nickname     String?
+  roles        String    @default("[]")
+  joinedAt     DateTime
+  messageCount Int       @default(0)
+  xp           Int       @default(0)
+  level        Int       @default(0)
+  lastActive   DateTime  @default(now())
+
+  guild    Guild     @relation(fields: [guildId], references: [id])
+  warnings Warning[]
+}
+
+model Warning {
+  id        Int      @id @default(autoincrement())
+  memberId  String
+  guildId   String
+  reason    String
+  moderator String
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  actorId   String
+  action    String
+  targetId  String?
+  meta      String   @default("{}")
+  source    String   @default("BOT_COMMAND")
+  createdAt DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [id])
+}
+
+model AutoRule {
+  id        String    @id @default(uuid())
+  guildId   String
+  name      String
+  trigger   String
+  action    String
+  enabled   Boolean   @default(true)
+  cooldown  Int       @default(0)
+  lastFired DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [id])
+}
