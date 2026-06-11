@@ -34,10 +34,9 @@ function timeLabel(endsAt, status) {
 
 // ─── Create modal ───────────────────────────────────────────────────────────
 
-function CreateModal({ channels, onClose, onCreated }) {
+function CreateModal({ onClose, onCreated }) {
   const [form, setForm] = useState({
-    prize: '', description: '', channelId: '', winnersCount: 1,
-    endsAt: '', requiredRoleId: '',
+    prize: '', description: '', winnersCount: 1, endsAt: '',
   });
   const [error, setError] = useState('');
 
@@ -48,19 +47,13 @@ function CreateModal({ channels, onClose, onCreated }) {
   });
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
   const minDate = new Date(Date.now() + 60000).toISOString().slice(0, 16);
 
   const submit = () => {
     if (!form.prize.trim()) return setError('Укажи приз');
-    if (!form.channelId) return setError('Выбери канал');
     if (!form.endsAt) return setError('Укажи дату окончания');
     setError('');
-    mut.mutate({
-      ...form,
-      winnersCount: parseInt(form.winnersCount),
-      requiredRoleId: form.requiredRoleId || null,
-    });
+    mut.mutate({ ...form, winnersCount: parseInt(form.winnersCount) });
   };
 
   return (
@@ -89,31 +82,14 @@ function CreateModal({ channels, onClose, onCreated }) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {/* Channel */}
-          <div>
-            <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>Канал *</label>
-            <div className="relative">
-              <select className="discord-input appearance-none pr-7" value={form.channelId} onChange={e => set('channelId', e.target.value)}>
-                <option value="">Выбрать...</option>
-                {channels.filter(c => c.type === 'TEXT' || c.type === 'text').map(c => (
-                  <option key={c.id} value={c.id}>#{c.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--discord-text-muted)' }} />
-            </div>
-          </div>
-
-          {/* Winners count */}
-          <div>
-            <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>Победителей</label>
-            <input
-              type="number" min={1} max={20}
-              className="discord-input"
-              value={form.winnersCount}
-              onChange={e => set('winnersCount', e.target.value)}
-            />
-          </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>Победителей</label>
+          <input
+            type="number" min={1} max={20}
+            className="discord-input"
+            value={form.winnersCount}
+            onChange={e => set('winnersCount', e.target.value)}
+          />
         </div>
 
         {/* End date */}
@@ -218,11 +194,6 @@ export default function Giveaways() {
     refetchInterval: 30000,
   });
 
-  const { data: channels = [] } = useQuery({
-    queryKey: ['channels'],
-    queryFn: () => api.get('/api/v1/channels').then(r => r.data),
-  });
-
   const invalidate = () => qc.invalidateQueries({ queryKey: ['giveaways'] });
 
   const endMut = useMutation({
@@ -303,7 +274,6 @@ export default function Giveaways() {
 
       {showCreate && (
         <CreateModal
-          channels={channels}
           onClose={() => setShowCreate(false)}
           onCreated={invalidate}
         />

@@ -52,18 +52,27 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   try {
     const {
-      prize, description, channelId, winnersCount = 1,
+      prize, description, winnersCount = 1,
       endsAt, requiredRoleId, bonusEntries = false,
     } = req.body;
 
-    if (!prize || !channelId || !endsAt) {
-      return res.status(400).json({ error: 'prize, channelId and endsAt are required' });
+    if (!prize || !endsAt) {
+      return res.status(400).json({ error: 'prize and endsAt are required' });
     }
     if (new Date(endsAt) <= new Date()) {
       return res.status(400).json({ error: 'endsAt must be in the future' });
     }
 
     const guildId = process.env.DISCORD_GUILD_ID;
+
+    // Always use the dedicated giveaway channel from settings
+    const guild = await prisma.guild.findUnique({ where: { id: guildId } });
+    let settings = {};
+    try { settings = JSON.parse(guild?.settings || '{}'); } catch {}
+    const channelId = settings.giveawayChannelId;
+    if (!channelId) {
+      return res.status(400).json({ error: 'Giveaway channel not configured. Set it in Settings → Отчёты.' });
+    }
 
     const giveaway = await prisma.giveaway.create({
       data: {
