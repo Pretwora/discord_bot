@@ -4,50 +4,51 @@ import {
   Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  Users, Hash, Shield, ClipboardList,
-  UserPlus, UserMinus, ShieldBan, MessageSquare,
-  TrendingUp, Activity, RefreshCw, Star
+  Users, Hash, Shield, UserPlus, UserMinus, ShieldBan,
+  MessageSquare, TrendingUp, Activity, RefreshCw, Star,
+  Zap, ClipboardList, ShieldCheck, ShieldOff, Gift, Settings
 } from 'lucide-react';
 import api from '../lib/api';
 
-// Map API action strings to display config
 const ACTION_MAP = {
-  member_join:    { icon: UserPlus,      color: 'var(--discord-green)',   label: 'joined the server' },
-  member_leave:   { icon: UserMinus,     color: 'var(--discord-text-muted)', label: 'left the server' },
-  member_ban:     { icon: ShieldBan,     color: 'var(--discord-red)',     label: 'was banned' },
-  member_kick:    { icon: UserMinus,     color: 'var(--discord-yellow)',  label: 'was kicked' },
-  message_delete: { icon: MessageSquare, color: 'var(--discord-red)',     label: 'message deleted in' },
-  default:        { icon: ClipboardList, color: 'var(--discord-blurple)', label: '' },
+  member_join:     { icon: UserPlus,    color: 'var(--discord-green)',      label: 'вступил на сервер' },
+  member_leave:    { icon: UserMinus,   color: 'var(--discord-text-muted)', label: 'покинул сервер' },
+  member_ban:      { icon: ShieldBan,   color: 'var(--discord-red)',        label: 'был забанен' },
+  member_kick:     { icon: UserMinus,   color: 'var(--discord-yellow)',     label: 'был кикнут' },
+  member_warn:     { icon: ShieldBan,   color: '#f97316',                   label: 'получил варн' },
+  member_timeout:  { icon: ShieldBan,   color: 'var(--discord-yellow)',     label: 'получил мут' },
+  message_delete:  { icon: MessageSquare, color: 'var(--discord-red)',      label: 'удалено сообщение в' },
+  channel_create:  { icon: Hash,        color: 'var(--discord-green)',      label: 'создал канал' },
+  channel_delete:  { icon: Hash,        color: 'var(--discord-red)',        label: 'удалил канал' },
+  role_create:     { icon: Shield,      color: 'var(--discord-green)',      label: 'создал роль' },
+  role_assign:     { icon: ShieldCheck, color: 'var(--discord-green)',      label: 'выдал роль участнику' },
+  role_unassign:   { icon: ShieldOff,   color: 'var(--discord-yellow)',     label: 'снял роль у участника' },
+  giveaway_create: { icon: Gift,        color: 'var(--discord-green)',      label: 'создал розыгрыш' },
+  giveaway_end:    { icon: Gift,        color: 'var(--discord-yellow)',     label: 'завершил розыгрыш' },
+  giveaway_cancel: { icon: Gift,        color: 'var(--discord-red)',        label: 'отменил розыгрыш' },
+  settings_update: { icon: Settings,    color: 'var(--discord-blurple)',    label: 'обновил настройки' },
+  default:         { icon: ClipboardList, color: 'var(--discord-blurple)', label: '' },
 };
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return `${diff}с назад`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}м назад`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}ч назад`;
+  return `${Math.floor(diff / 86400)}д назад`;
 }
 
-// Build last-7-days activity from audit logs
-function buildActivityData(logs) {
-  const days = Array.from({ length: 7 }, (_, i) => {
+function buildActivityData(joinsByDay) {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
+    const date = d.toISOString().slice(0, 10);
     return {
-      day: d.toLocaleDateString('en', { weekday: 'short' }),
-      date: d.toISOString().slice(0, 10),
-      events: 0,
-      joins: 0,
+      day: d.toLocaleDateString('ru', { weekday: 'short' }),
+      date,
+      joins: joinsByDay?.[date] || 0,
     };
   });
-  for (const log of logs) {
-    const date = new Date(log.createdAt).toISOString().slice(0, 10);
-    const entry = days.find(d => d.date === date);
-    if (!entry) continue;
-    entry.events++;
-    if (log.action === 'member_join') entry.joins++;
-  }
-  return days;
 }
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -62,7 +63,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-function StatCard({ icon: Icon, label, value, color, loading }) {
+function StatCard({ icon: Icon, label, value, sub, color, loading }) {
   return (
     <div className="discord-card p-4 flex items-start gap-4">
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}20` }}>
@@ -74,18 +75,10 @@ function StatCard({ icon: Icon, label, value, color, loading }) {
           ? <div className="h-8 w-20 rounded animate-pulse" style={{ backgroundColor: 'var(--discord-border)' }} />
           : <p className="text-2xl font-bold text-white">{(value ?? 0).toLocaleString()}</p>
         }
+        {!loading && sub != null && (
+          <p className="text-xs mt-0.5" style={{ color: 'var(--discord-text-muted)' }}>{sub}</p>
+        )}
       </div>
-    </div>
-  );
-}
-
-function ErrorBanner({ message, onRetry }) {
-  return (
-    <div className="flex items-center justify-between p-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(242,63,67,0.1)', border: '1px solid rgba(242,63,67,0.3)', color: 'var(--discord-red)' }}>
-      <span>{message}</span>
-      <button onClick={onRetry} className="flex items-center gap-1.5 hover:underline">
-        <RefreshCw size={13} /> Retry
-      </button>
     </div>
   );
 }
@@ -99,16 +92,7 @@ export default function Overview() {
   } = useQuery({
     queryKey: ['stats'],
     queryFn: () => api.get('/api/v1/stats/overview').then(r => r.data),
-  });
-
-  const {
-    data: logs,
-    isLoading: logsLoading,
-    isError: logsError,
-    refetch: refetchLogs,
-  } = useQuery({
-    queryKey: ['audit-log', 'overview'],
-    queryFn: () => api.get('/api/v1/audit-log?limit=100').then(r => r.data),
+    refetchInterval: 30_000,
   });
 
   const { data: leaderboard, isLoading: lbLoading } = useQuery({
@@ -117,8 +101,8 @@ export default function Overview() {
     refetchInterval: 30_000,
   });
 
-  const activityData = logs ? buildActivityData(logs) : [];
-  const recentEvents = (logs ?? []).slice(0, 5);
+  const activityData = buildActivityData(stats?.joinsByDay);
+  const recentEvents = stats?.recentAudit ?? [];
 
   return (
     <div className="p-6 space-y-6">
@@ -126,22 +110,31 @@ export default function Overview() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Overview</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--discord-text-muted)' }}>Pretwora DS — server statistics</p>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--discord-text-muted)' }}>Pretwora DS — статистика сервера</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(35,165,90,0.15)', color: 'var(--discord-green)' }}>
-          <Activity size={12} /> Live
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(35,165,90,0.15)', color: 'var(--discord-green)' }}>
+            <Activity size={12} /> Live
+          </div>
+          <button onClick={refetchStats} className="discord-btn discord-btn-ghost flex items-center gap-2 text-xs py-1.5">
+            <RefreshCw size={13} /> Обновить
+          </button>
         </div>
       </div>
 
-      {statsError && <ErrorBanner message="Failed to load statistics" onRetry={refetchStats} />}
-      {logsError  && <ErrorBanner message="Failed to load activity"   onRetry={refetchLogs} />}
+      {statsError && (
+        <div className="flex items-center justify-between p-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(242,63,67,0.1)', border: '1px solid rgba(242,63,67,0.3)', color: 'var(--discord-red)' }}>
+          <span>Не удалось загрузить статистику</span>
+          <button onClick={refetchStats} className="flex items-center gap-1.5 hover:underline"><RefreshCw size={13} /> Retry</button>
+        </div>
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon={Users}        label="Total Members"   value={stats?.memberCount}  color="var(--discord-blurple)" loading={statsLoading} />
-        <StatCard icon={Hash}         label="Channels"        value={stats?.channelCount} color="#3ba55c"               loading={statsLoading} />
-        <StatCard icon={Shield}       label="Roles"           value={stats?.roleCount}    color="var(--discord-yellow)" loading={statsLoading} />
-        <StatCard icon={ClipboardList} label="Audit Entries"  value={stats?.auditCount}   color="#eb459e"               loading={statsLoading} />
+        <StatCard icon={Users}   label="Участников"      value={stats?.memberCount}  sub={`${stats?.activeToday ?? 0} активных сегодня`} color="var(--discord-blurple)" loading={statsLoading} />
+        <StatCard icon={UserPlus} label="Вступило сегодня" value={stats?.joinedToday}  color="var(--discord-green)"  loading={statsLoading} />
+        <StatCard icon={Zap}     label="Всего XP"         value={stats?.totalXp}      sub={`${(stats?.totalMessages ?? 0).toLocaleString()} сообщений`} color="var(--discord-yellow)" loading={statsLoading} />
+        <StatCard icon={Hash}    label="Каналов"          value={stats?.channelCount} sub={`${stats?.roleCount ?? 0} ролей`} color="#3ba55c" loading={statsLoading} />
       </div>
 
       {/* Chart + events */}
@@ -149,39 +142,28 @@ export default function Overview() {
         {/* Activity chart */}
         <div className="xl:col-span-2 discord-card p-4">
           <div className="flex items-center justify-between mb-4">
-            <p className="font-semibold text-white">Activity (last 7 days)</p>
-            <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--discord-text-muted)' }}>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--discord-blurple)' }} />
-                Events
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--discord-green)' }} />
-                Joins
-              </span>
+            <p className="font-semibold text-white">Новые участники (последние 7 дней)</p>
+            <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--discord-text-muted)' }}>
+              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--discord-green)' }} />
+              Вступления
             </div>
           </div>
-          {logsLoading ? (
+          {statsLoading ? (
             <div className="h-[200px] rounded animate-pulse" style={{ backgroundColor: 'var(--discord-border)' }} />
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={activityData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                 <defs>
-                  <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#5865F2" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#5865F2" stopOpacity={0} />
-                  </linearGradient>
                   <linearGradient id="colorJoins" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#23a55a" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="#23a55a" stopOpacity={0.35} />
                     <stop offset="95%" stopColor="#23a55a" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="day" tick={{ fill: '#96989d', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#96989d', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#96989d', fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="events" name="Events" stroke="#5865F2" fill="url(#colorEvents)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="joins"  name="Joins"  stroke="#23a55a" fill="url(#colorJoins)"  strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="joins" name="Вступлений" stroke="#23a55a" fill="url(#colorJoins)" strokeWidth={2} dot={{ fill: '#23a55a', r: 3 }} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -189,8 +171,8 @@ export default function Overview() {
 
         {/* Recent events */}
         <div className="discord-card p-4 flex flex-col">
-          <p className="font-semibold text-white mb-4">Recent Events</p>
-          {logsLoading ? (
+          <p className="font-semibold text-white mb-4">Последние события</p>
+          {statsLoading ? (
             <div className="space-y-3">
               {Array(5).fill(0).map((_, i) => (
                 <div key={i} className="flex gap-3">
@@ -202,11 +184,13 @@ export default function Overview() {
                 </div>
               ))}
             </div>
+          ) : recentEvents.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center" style={{ color: 'var(--discord-text-muted)' }}>
+              <ClipboardList size={28} className="mb-2 opacity-30" />
+              <p className="text-sm text-center">События появятся<br/>по мере активности</p>
+            </div>
           ) : (
-            <div className="space-y-3 flex-1">
-              {recentEvents.length === 0 && (
-                <p className="text-sm text-center py-8" style={{ color: 'var(--discord-text-muted)' }}>No events yet</p>
-              )}
+            <div className="space-y-3 flex-1 overflow-y-auto">
               {recentEvents.map(log => {
                 const def = ACTION_MAP[log.action] ?? ACTION_MAP.default;
                 const Icon = def.icon;
@@ -221,7 +205,8 @@ export default function Overview() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white leading-tight">
                         <span className="font-medium">{log.actorId}</span>
-                        {' '}{def.label}{targetDisplay ? ` ${targetDisplay}` : ''}
+                        {' '}<span style={{ color: 'var(--discord-text-muted)' }}>{def.label}</span>
+                        {targetDisplay ? <span className="font-medium"> {targetDisplay}</span> : ''}
                       </p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--discord-text-muted)' }}>{timeAgo(log.createdAt)}</p>
                     </div>
@@ -233,9 +218,9 @@ export default function Overview() {
           <a
             href="/audit-log"
             className="discord-btn discord-btn-ghost block text-center mt-4 text-xs"
-            style={{ color: 'var(--discord-blurple)', borderColor: 'var(--discord-blurple)' }}
+            style={{ color: 'var(--discord-blurple)', borderColor: 'rgba(88,101,242,0.4)' }}
           >
-            View Audit Log →
+            Полный аудитлог →
           </a>
         </div>
       </div>
@@ -244,9 +229,9 @@ export default function Overview() {
       <div className="discord-card p-4">
         <div className="flex items-center justify-between mb-4">
           <p className="font-semibold text-white flex items-center gap-2">
-            <Star size={16} style={{ color: 'var(--discord-blurple)' }} /> Top Members by XP
+            <Star size={16} style={{ color: 'var(--discord-blurple)' }} /> Топ по XP
           </p>
-          <span className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>Top 10</span>
+          <span className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>Топ 10</span>
         </div>
         {lbLoading ? (
           <div className="space-y-2">
@@ -254,13 +239,12 @@ export default function Overview() {
               <div key={i} className="h-10 rounded animate-pulse" style={{ backgroundColor: 'var(--discord-border)' }} />
             ))}
           </div>
+        ) : (leaderboard ?? []).length === 0 ? (
+          <p className="text-sm text-center py-6" style={{ color: 'var(--discord-text-muted)' }}>
+            Нет данных — участники ещё не писали сообщений
+          </p>
         ) : (
           <div className="space-y-1">
-            {(leaderboard ?? []).length === 0 && (
-              <p className="text-sm text-center py-6" style={{ color: 'var(--discord-text-muted)' }}>
-                Нет данных — участники ещё не писали сообщений
-              </p>
-            )}
             {(leaderboard ?? []).map((m, i) => {
               const xpForNext = ((m.level + 1) * (m.level + 2)) / 2 * 100;
               const xpForCur  = (m.level * (m.level + 1)) / 2 * 100;
@@ -287,26 +271,22 @@ export default function Overview() {
         )}
       </div>
 
-      {/* Member status bar — static, Discord doesn't expose presence via REST */}
+      {/* Member Status */}
       <div className="discord-card p-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="font-semibold text-white">Member Status</p>
+          <p className="font-semibold text-white">Активность сервера</p>
           <TrendingUp size={16} style={{ color: 'var(--discord-text-muted)' }} />
         </div>
-        <p className="text-xs mb-3" style={{ color: 'var(--discord-text-muted)' }}>
-          Realtime presence requires Discord Gateway — shown via bot socket.
-        </p>
-        <div className="flex gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Online',  value: '—', color: 'var(--discord-green)' },
-            { label: 'Idle',    value: '—', color: 'var(--discord-yellow)' },
-            { label: 'DND',     value: '—', color: 'var(--discord-red)' },
-            { label: 'Offline', value: stats?.memberCount ?? '—', color: 'var(--discord-text-muted)' },
+            { label: 'Участников', value: stats?.memberCount, color: 'var(--discord-blurple)' },
+            { label: 'Активных сегодня', value: stats?.activeToday, color: 'var(--discord-green)' },
+            { label: 'Вступило сегодня', value: stats?.joinedToday, color: '#23a55a' },
+            { label: 'Сообщений всего', value: stats?.totalMessages, color: 'var(--discord-yellow)' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-              <span className="text-sm font-medium text-white">{statsLoading ? '…' : value}</span>
-              <span className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>{label}</span>
+            <div key={label} className="p-3 rounded-lg text-center" style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--discord-border)' }}>
+              <p className="text-xl font-bold text-white">{statsLoading ? '…' : (value ?? 0).toLocaleString()}</p>
+              <p className="text-xs mt-0.5" style={{ color }}>{label}</p>
             </div>
           ))}
         </div>
