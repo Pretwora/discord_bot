@@ -97,6 +97,17 @@ module.exports = {
     // Export syncGuild so socket.js can trigger manual re-sync
     client._syncGuild = () => syncGuild(guild);
 
+    // Start voice XP timers for members already in voice channels on bot startup
+    const { startVoiceXpForMember } = require('./voiceStateUpdate');
+    guild.channels.cache
+      .filter(ch => ch.isVoiceBased())
+      .forEach(ch => {
+        ch.members.filter(m => !m.user.bot).forEach(m => {
+          startVoiceXpForMember(m, ch);
+        });
+      });
+    logger.info('[voice] Restored XP timers for members already in voice');
+
     // Restore giveaway schedulers that were active before restart
     await restoreGiveaways(client);
 
