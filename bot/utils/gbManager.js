@@ -9,8 +9,8 @@ const LOOT_TABLE = {
     emoji: '🐉',
     format: 25,
     drops: [
-      { slot: 'LEGS',      label: 'Штаны',  qty: 2 },
-      { slot: 'SHOULDERS', label: 'Плечи',  qty: 2 },
+      { slot: 'LEGS',      label: 'Штаны',  qty: 1 },
+      { slot: 'SHOULDERS', label: 'Плечи',  qty: 1 },
     ],
   },
   MAGTHERIDON: {
@@ -18,7 +18,7 @@ const LOOT_TABLE = {
     emoji: '🔥',
     format: 25,
     drops: [
-      { slot: 'CHEST', label: 'Нагрудник', qty: 2 },
+      { slot: 'CHEST', label: 'Нагрудник', qty: 1 },
     ],
   },
   KARAZHAN: {
