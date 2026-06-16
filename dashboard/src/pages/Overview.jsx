@@ -9,6 +9,7 @@ import {
   Zap, ClipboardList, ShieldCheck, ShieldOff, Gift, Settings
 } from 'lucide-react';
 import api from '../lib/api';
+import ServerBanner from '../components/ServerBanner';
 
 const ACTION_MAP = {
   member_join:     { icon: UserPlus,    color: 'var(--discord-green)',      label: 'вступил на сервер' },
@@ -106,6 +107,9 @@ export default function Overview() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Banner */}
+      <ServerBanner defaultVariant="parallax" />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

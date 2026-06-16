@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const { refreshMessage } = require('../utils/giveawayManager');
 const {
   buildRaidEmbed, buildMainRows, buildBuyerSelectRows,
-  pendingSelections, parseItemValue, NOSHOW_THRESHOLD,
+  pendingSelections, parseItemValue, NOSHOW_THRESHOLD, LOOT_TABLE,
 } = require('../utils/gbManager');
 const { refreshMessage: gbRefresh } = require('../commands/gb');
 
@@ -187,13 +187,42 @@ module.exports = {
       return interaction.deferUpdate();
     }
 
-    // ── GB: баер нажимает "Записаться" ────────────────────────────────────
+    // ── GB: баер нажимает "Записаться" → показываем Modal с ником ──────────
     if (interaction.isButton() && interaction.customId.startsWith('gb_buyer_register_')) {
       const raidId = interaction.customId.replace('gb_buyer_register_', '');
+      const selected = pendingSelections.get(`${raidId}:${interaction.user.id}`);
+      if (!selected || selected.length === 0) {
+        return interaction.reply({ content: '❌ Сначала выбери вещи из списка выше.', ephemeral: true });
+      }
+
+      const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+      const modal = new ModalBuilder()
+        .setCustomId(`gb_buyer_modal_${raidId}`)
+        .setTitle('Запись в голдбид рейд');
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('character_name')
+            .setLabel('Ник персонажа в игре')
+            .setPlaceholder('Например: Fexler')
+            .setStyle(TextInputStyle.Short)
+            .setMaxLength(50)
+            .setRequired(true),
+        ),
+      );
+
+      return interaction.showModal(modal);
+    }
+
+    // ── GB: баер сабмитит Modal → создаём записи с проверкой вместимости ──
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('gb_buyer_modal_')) {
+      const raidId = interaction.customId.replace('gb_buyer_modal_', '');
       try {
+        const characterName = interaction.fields.getTextInputValue('character_name').trim();
         const selected = pendingSelections.get(`${raidId}:${interaction.user.id}`);
         if (!selected || selected.length === 0) {
-          return interaction.reply({ content: '❌ Сначала выбери вещи из списка выше.', ephemeral: true });
+          return interaction.reply({ content: '❌ Сессия истекла — открой меню записи заново.', ephemeral: true });
         }
 
         const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
@@ -201,34 +230,55 @@ module.exports = {
           return interaction.reply({ content: '❌ Запись в рейд закрыта.', ephemeral: true });
         }
 
-        // Remove duplicates (same item already queued)
-        const existing = await prisma.goldRaidBuyer.findMany({
+        // Фильтруем: убираем уже заказанные этим юзером
+        const myExisting = await prisma.goldRaidBuyer.findMany({
           where: { raidId, userId: interaction.user.id, status: 'QUEUED' },
         });
-        const existingKeys = new Set(existing.map(b => `${b.raidTarget}|${b.slot}|${b.tokenType}`));
-        const toAdd = selected.filter(v => !existingKeys.has(v));
+        const myKeys = new Set(myExisting.map(b => `${b.raidTarget}|${b.slot}|${b.tokenType}`));
+        let toAdd = selected.filter(v => !myKeys.has(v));
 
-        if (toAdd.length === 0) {
+        // Проверяем вместимость каждого слота
+        const fullItems = [];
+        const finalAdd = [];
+        for (const v of toAdd) {
+          const { raidTarget, slot, tokenType } = parseItemValue(v);
+          const qty = LOOT_TABLE[raidTarget]?.drops.find(d => d.slot === slot)?.qty ?? 1;
+          const count = await prisma.goldRaidBuyer.count({
+            where: { raidId, raidTarget, slot, tokenType, status: 'QUEUED' },
+          });
+          if (count >= qty) {
+            fullItems.push(v);
+          } else {
+            finalAdd.push({ raidTarget, slot, tokenType });
+          }
+        }
+
+        if (finalAdd.length === 0) {
           pendingSelections.delete(`${raidId}:${interaction.user.id}`);
-          return interaction.reply({ content: '✅ Ты уже стоишь в очереди на все выбранные вещи!', ephemeral: true });
+          const fullMsg = fullItems.length > 0 ? ' Все выбранные слоты уже заполнены.' : ' Ты уже стоишь в очереди на все эти вещи.';
+          return interaction.reply({ content: `ℹ️${fullMsg}`, ephemeral: true });
         }
 
         await prisma.goldRaidBuyer.createMany({
-          data: toAdd.map(v => {
-            const { raidTarget, slot, tokenType } = parseItemValue(v);
-            return { raidId, userId: interaction.user.id, username: interaction.user.username, raidTarget, slot, tokenType };
-          }),
+          data: finalAdd.map(({ raidTarget, slot, tokenType }) => ({
+            raidId,
+            userId: interaction.user.id,
+            username: interaction.user.username,
+            characterName,
+            raidTarget,
+            slot,
+            tokenType,
+          })),
         });
 
         pendingSelections.delete(`${raidId}:${interaction.user.id}`);
         await gbRefresh(client, raid).catch(() => {});
 
-        return interaction.reply({
-          content: `💰 Записан на **${toAdd.length}** вещ${toAdd.length === 1 ? 'ь' : 'и'}! Увидимся в рейде!`,
-          ephemeral: true,
-        });
+        let msg = `💰 Записан на **${finalAdd.length}** вещ${finalAdd.length === 1 ? 'ь' : 'и'}! Персонаж: **${characterName}**`;
+        if (fullItems.length > 0) msg += `\n⚠️ ${fullItems.length} слот(а) уже заполнены — туда не попал.`;
+        return interaction.reply({ content: msg, ephemeral: true });
       } catch (err) {
-        logger.error(`gb_buyer_register failed: ${err.message}`);
+        logger.error(`gb_buyer_modal failed: ${err.message}`);
         return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
       }
     }

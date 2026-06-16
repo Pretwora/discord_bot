@@ -196,13 +196,14 @@ model GoldRaidBuyer {
   raidId     String
   userId     String
   username   String
-  raidTarget String   // GRUUL | MAGTHERIDON | KARAZHAN
-  slot       String   // LEGS | SHOULDERS | CHEST | GLOVES | HEAD
-  tokenType  String   // ПРШ | ЛХМД | ВЖД
-  goldAmount Int?
-  status     String   @default("QUEUED") // QUEUED | WON | CANCELLED
-  noShow     Boolean  @default(false)
-  joinedAt   DateTime @default(now())
+  raidTarget    String   // GRUUL | MAGTHERIDON | KARAZHAN
+  slot          String   // LEGS | SHOULDERS | CHEST | GLOVES | HEAD
+  tokenType     String   // ПРШ | ЛХМД | ВЖД
+  characterName String?
+  goldAmount    Int?
+  status        String   @default("QUEUED") // QUEUED | WON | CANCELLED
+  noShow        Boolean  @default(false)
+  joinedAt      DateTime @default(now())
 
   raid GoldRaid @relation(fields: [raidId], references: [id], onDelete: Cascade)
 }

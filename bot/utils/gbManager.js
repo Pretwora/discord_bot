@@ -76,7 +76,9 @@ function buildRaidEmbed(raid, pumpers, buyers) {
         );
         const full = queued.length >= drop.qty;
         const indicator = full ? '✅' : `${queued.length}/${drop.qty}`;
-        const names = queued.length > 0 ? queued.map(b => `<@${b.userId}>`).join(', ') : '—';
+        const names = queued.length > 0
+          ? queued.map(b => b.characterName ? `<@${b.userId}> (${b.characterName})` : `<@${b.userId}>`).join(', ')
+          : '—';
         return `**${token}** (${indicator}): ${names}`;
       });
       lines.push(`**${drop.label}:**\n${tokenLines.join('\n')}`);

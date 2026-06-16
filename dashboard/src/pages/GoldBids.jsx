@@ -231,7 +231,11 @@ function RaidDetail({ raidId, onClose }) {
                             <span style={{ color: 'var(--discord-text-muted)' }}>{queued.length}/{drop.qty}</span>
                           </div>
                           {queued.length > 0
-                            ? queued.map(b => <div key={b.id} className="truncate" style={{ color: 'var(--discord-text-muted)' }}>{b.username}</div>)
+                            ? queued.map(b => (
+                              <div key={b.id} className="truncate" style={{ color: 'var(--discord-text-muted)' }}>
+                                {b.username}{b.characterName && <span style={{ color: 'var(--discord-blurple)' }}> ({b.characterName})</span>}
+                              </div>
+                            ))
                             : <div style={{ color: 'var(--discord-text-muted)' }}>—</div>
                           }
                         </div>

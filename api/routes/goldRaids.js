@@ -49,6 +49,14 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { notes, scheduledAt } = req.body;
+
+    // Убеждаемся что запись Guild существует (foreign key)
+    await prisma.guild.upsert({
+      where: { id: GUILD_ID },
+      create: { id: GUILD_ID, name: 'Pretwora DS', ownerId: req.user.id },
+      update: {},
+    });
+
     const raid = await prisma.goldRaid.create({
       data: {
         guildId: GUILD_ID,
