@@ -22,6 +22,7 @@ model Guild {
   auditLogs  AuditLog[]
   autoRules  AutoRule[]
   giveaways  Giveaway[]
+  goldRaids  GoldRaid[]
 }
 
 model Channel {
@@ -152,5 +153,87 @@ model GiveawayWinner {
   createdAt  DateTime @default(now())
 
   giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+}
+
+// ─── Голдбид рейды ────────────────────────────────────────────────────────────
+
+model GoldRaid {
+  id          String    @id @default(uuid())
+  guildId     String
+  status      String    @default("OPEN") // OPEN | LOCKED | IN_PROGRESS | COMPLETED | CANCELLED
+  announcedBy String
+  messageId   String?
+  channelId   String?
+  scheduledAt DateTime?
+  completedAt DateTime?
+  totalGold   Int?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  guild   Guild            @relation(fields: [guildId], references: [id])
+  pumpers GoldRaidPumper[]
+  buyers  GoldRaidBuyer[]
+}
+
+model GoldRaidPumper {
+  id         String   @id @default(uuid())
+  raidId     String
+  userId     String
+  username   String
+  confirmed  Boolean  @default(false)
+  noShow     Boolean  @default(false)
+  earnedGold Int?
+  joinedAt   DateTime @default(now())
+
+  raid GoldRaid @relation(fields: [raidId], references: [id], onDelete: Cascade)
+
+  @@unique([raidId, userId])
+}
+
+model GoldRaidBuyer {
+  id         String   @id @default(uuid())
+  raidId     String
+  userId     String
+  username   String
+  raidTarget String   // GRUUL | MAGTHERIDON | KARAZHAN
+  slot       String   // LEGS | SHOULDERS | CHEST | GLOVES | HEAD
+  tokenType  String   // ПРШ | ЛХМД | ВЖД
+  goldAmount Int?
+  status     String   @default("QUEUED") // QUEUED | WON | CANCELLED
+  noShow     Boolean  @default(false)
+  joinedAt   DateTime @default(now())
+
+  raid GoldRaid @relation(fields: [raidId], references: [id], onDelete: Cascade)
+}
+
+model GoldRaidUserStats {
+  id          String   @id @default(uuid())
+  guildId     String
+  userId      String
+  username    String
+  pumperRaids Int      @default(0)
+  pumperGold  Int      @default(0)
+  buyerRaids  Int      @default(0)
+  itemsWon    Int      @default(0)
+  noShowCount Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([guildId, userId])
+}
+
+model GoldRaidBlacklist {
+  id        String    @id @default(uuid())
+  guildId   String
+  userId    String
+  username  String
+  reason    String?
+  noShows   Int       @default(0)
+  addedBy   String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([guildId, userId])
 }
 

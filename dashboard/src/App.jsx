@@ -10,6 +10,7 @@ import Members from './pages/Members';
 import AuditLog from './pages/AuditLog';
 import Settings from './pages/Settings';
 import Giveaways from './pages/Giveaways';
+import GoldBids from './pages/GoldBids';
 
 function ProtectedRoute({ children }) {
   const { isAuth } = useAuth();
@@ -34,6 +35,7 @@ function AppRoutes() {
         <Route path="roles" element={<Roles />} />
         <Route path="members" element={<Members />} />
         <Route path="giveaways" element={<Giveaways />} />
+        <Route path="goldbids" element={<GoldBids />} />
         <Route path="audit-log" element={<AuditLog />} />
         <Route path="settings" element={<Settings />} />
       </Route>
