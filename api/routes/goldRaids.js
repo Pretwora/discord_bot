@@ -67,6 +67,10 @@ router.post('/', requireAuth, async (req, res) => {
       },
     });
     writeAuditLog({ guildId: GUILD_ID, actorId: req.user.id, action: 'GB_CREATE', meta: { raidId: raid.id, source: 'dashboard' } }).catch(() => {});
+
+    // Просим бота запостить анонс в Discord
+    req.io.emit('bot:cmd', { event: 'goldbid:create', raidId: raid.id });
+
     res.status(201).json(raid);
   } catch (err) {
     res.status(500).json({ error: err.message });

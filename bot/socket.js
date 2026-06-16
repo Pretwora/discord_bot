@@ -4,6 +4,8 @@ const RoleManager    = require('./managers/RoleManager');
 const ChannelManager = require('./managers/ChannelManager');
 const MemberManager  = require('./managers/MemberManager');
 const { postGiveaway, endGiveaway, rerollGiveaway, scheduleEnd } = require('./utils/giveawayManager');
+const { buildRaidEmbed, buildMainRows } = require('./utils/gbManager');
+const { refreshMessage: gbRefreshMessage } = require('./commands/gb');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -146,6 +148,37 @@ module.exports = function connectDashboardSocket(client) {
         await endGiveaway(client, giveawayId);
       } else if (event === 'giveaway:reroll') {
         await rerollGiveaway(client, giveawayId, count ?? 1);
+      } else if (event === 'goldbid:create') {
+        const { raidId } = data;
+        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
+        if (!raid) return;
+
+        // Получаем сохранённый GB-канал из настроек гильдии
+        const guildRecord = await prisma.guild.findUnique({ where: { id: raid.guildId } });
+        const settings = JSON.parse(guildRecord?.settings || '{}');
+        const gbChannelId = settings.gbChannelId;
+
+        if (!gbChannelId) {
+          logger.warn(`goldbid:create — gbChannelId не настроен. Запусти /gb setup`);
+          return;
+        }
+
+        const discordGuild = client.guilds.cache.get(raid.guildId);
+        const channel = await discordGuild?.channels.fetch(gbChannelId).catch(() => null);
+        if (!channel) {
+          logger.warn(`goldbid:create — канал ${gbChannelId} не найден`);
+          return;
+        }
+
+        const embed = buildRaidEmbed(raid, [], []);
+        const rows = buildMainRows(raid.id, 'OPEN');
+        const msg = await channel.send({ embeds: [embed], components: rows });
+
+        await prisma.goldRaid.update({
+          where: { id: raid.id },
+          data: { messageId: msg.id, channelId: channel.id },
+        });
+
       } else if (event === 'giveaway:cancel') {
         const g = await prisma.giveaway.findUnique({ where: { id: giveawayId } });
         if (g?.messageId) {
