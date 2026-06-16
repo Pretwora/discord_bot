@@ -136,7 +136,7 @@ module.exports = function connectDashboardSocket(client) {
   });
 
   // ── Giveaways ──────────────────────────────────────────────────────
-  socket.on('bot:cmd', async ({ event, giveawayId, count }) => {
+  socket.on('bot:cmd', async ({ event, giveawayId, count, raidId }) => {
     try {
       if (event === 'giveaway:create') {
         const giveaway = await prisma.giveaway.findUnique({ where: { id: giveawayId } });
@@ -149,7 +149,6 @@ module.exports = function connectDashboardSocket(client) {
       } else if (event === 'giveaway:reroll') {
         await rerollGiveaway(client, giveawayId, count ?? 1);
       } else if (event === 'goldbid:create') {
-        const { raidId } = data;
         const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
         if (!raid) return;
 
