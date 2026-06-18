@@ -65,6 +65,11 @@ const data = new SlashCommandBuilder()
     ),
   )
   .addSubcommand(s => s
+    .setName('edit')
+    .setDescription('Редактировать анонс рейда (открывает форму)')
+    .addStringOption(o => o.setName('id').setDescription('ID рейда (если не указан — последний активный)').setRequired(false)),
+  )
+  .addSubcommand(s => s
     .setName('stats')
     .setDescription('Статистика пампера')
     .addUserOption(o => o.setName('user').setDescription('Участник (по умолч. ты)').setRequired(false)),

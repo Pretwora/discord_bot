@@ -82,13 +82,14 @@ router.post('/', requireAuth, async (req, res) => {
 // PATCH /api/v1/gold-raids/:id — update status / notes / gold
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
-    const { status, notes, totalGold, scheduledAt, slotPrice } = req.body;
+    const { status, notes, totalGold, scheduledAt, slotPrice, extraText } = req.body;
     const data = { updatedAt: new Date() };
     if (status) data.status = status;
     if (notes !== undefined) data.notes = notes;
     if (totalGold !== undefined) data.totalGold = totalGold;
     if (scheduledAt !== undefined) data.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
     if (slotPrice !== undefined) data.slotPrice = slotPrice != null ? parseInt(slotPrice) : null;
+    if (extraText !== undefined) data.extraText = extraText;
     if (status === 'COMPLETED') data.completedAt = new Date();
 
     const raid = await prisma.goldRaid.update({ where: { id: req.params.id }, data });

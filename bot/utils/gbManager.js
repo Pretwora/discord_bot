@@ -70,7 +70,8 @@ function buildRaidEmbed(raid, pumpers, buyers) {
   const priceStr = raid.slotPrice != null
     ? `\n> # 💰 ${raid.slotPrice.toLocaleString()} золота за токен\n`
     : '';
-  embed.setDescription(`${priceStr}${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${raidTypeLabel}`);
+  const extraStr = raid.extraText ? `\n${raid.extraText}\n` : '';
+  embed.setDescription(`${priceStr}${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${raidTypeLabel}${extraStr}`);
 
   // Pumpers list
   const pumperLines = pumpers.length > 0

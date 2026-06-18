@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Swords, Plus, X, ChevronDown, ChevronRight, Trophy,
-  Users, Coins, Ban, ShieldOff, CheckCircle2, Clock,
+  Users, Coins, Ban, ShieldOff, CheckCircle2, Clock, Pencil, Save,
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -167,7 +167,38 @@ function RaidDetail({ raidId, onClose }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['gold-raids'] }); onClose(); },
   });
 
+  const editMut = useMutation({
+    mutationFn: body => api.patch(`/api/v1/gold-raids/${raidId}`, body).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['gold-raids'] });
+      qc.invalidateQueries({ queryKey: ['gold-raid', raidId] });
+      setEditing(false);
+    },
+  });
+
   const [goldInput, setGoldInput] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editNotes, setEditNotes] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editScheduledAt, setEditScheduledAt] = useState('');
+  const [editText, setEditText] = useState('');
+
+  function startEdit() {
+    setEditNotes(raid.notes ?? '');
+    setEditPrice(raid.slotPrice != null ? String(raid.slotPrice) : '');
+    setEditScheduledAt(raid.scheduledAt ? new Date(raid.scheduledAt).toISOString().slice(0, 16) : '');
+    setEditText(raid.extraText ?? '');
+    setEditing(true);
+  }
+
+  function saveEdit() {
+    editMut.mutate({
+      notes: editNotes || null,
+      slotPrice: editPrice ? parseInt(editPrice) : null,
+      scheduledAt: editScheduledAt ? new Date(editScheduledAt).toISOString() : null,
+      extraText: editText || null,
+    });
+  }
 
   if (isLoading) return (
     <div className="discord-card p-6 flex items-center justify-center" style={{ minHeight: 200 }}>
@@ -195,12 +226,57 @@ function RaidDetail({ raidId, onClose }) {
             </p>
           )}
           {raid.notes && <p className="text-sm" style={{ color: 'var(--discord-text-muted)' }}>{raid.notes}</p>}
+          {raid.extraText && <p className="text-sm" style={{ color: 'var(--discord-text)' }}>{raid.extraText}</p>}
           {raid.scheduledAt && <p className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>📅 {fmtDate(raid.scheduledAt)}</p>}
         </div>
-        <button onClick={onClose} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--discord-text-muted)' }}>
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          {!editing && (
+            <button onClick={startEdit} className="p-1.5 rounded hover:bg-white/10 transition-colors" style={{ color: 'var(--discord-text-muted)' }} title="Редактировать">
+              <Pencil size={14} />
+            </button>
+          )}
+          <button onClick={onClose} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--discord-text-muted)' }}>
+            <X size={16} />
+          </button>
+        </div>
       </div>
+
+      {/* Edit form */}
+      {editing && (
+        <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: 'var(--discord-bg)', border: '1px solid var(--discord-blurple)' }}>
+          <p className="text-xs font-semibold uppercase" style={{ color: 'var(--discord-blurple)' }}>✏️ Редактирование</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>💰 Цена за токен</label>
+              <input type="number" min="0" className="discord-input w-full text-sm" style={{ color: 'var(--discord-yellow)' }}
+                placeholder="5000" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>📅 Дата и время</label>
+              <input type="datetime-local" className="discord-input w-full text-sm" style={{ colorScheme: 'dark' }}
+                value={editScheduledAt} onChange={e => setEditScheduledAt(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>📝 Заметка</label>
+            <input className="discord-input w-full text-sm" placeholder="Пятница 20:00, сбор в голосовом..."
+              value={editNotes} onChange={e => setEditNotes(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>📄 Произвольный текст в embed</label>
+            <textarea className="discord-input w-full text-sm resize-none" rows={3}
+              placeholder="Любой текст который появится в анонсе..."
+              value={editText} onChange={e => setEditText(e.target.value)} />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button className="discord-btn discord-btn-ghost text-sm" onClick={() => setEditing(false)}>Отмена</button>
+            <button className="discord-btn discord-btn-primary text-sm flex items-center gap-1.5"
+              onClick={saveEdit} disabled={editMut.isPending}>
+              <Save size={13} /> {editMut.isPending ? 'Сохраняем…' : 'Сохранить и обновить Discord'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Status controls */}
       {raid.status === 'OPEN' && (

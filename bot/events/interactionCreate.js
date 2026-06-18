@@ -336,6 +336,29 @@ module.exports = {
       }
     }
 
+    // ── GB: edit modal submit ─────────────────────────────────────────────
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('gb_edit_modal_')) {
+      const raidId = interaction.customId.replace('gb_edit_modal_', '');
+      try {
+        const priceRaw = interaction.fields.getTextInputValue('edit_price').trim();
+        const notes    = interaction.fields.getTextInputValue('edit_notes').trim();
+        const extraText = interaction.fields.getTextInputValue('edit_extra').trim();
+
+        const data = { updatedAt: new Date() };
+        data.slotPrice = priceRaw ? parseInt(priceRaw) : null;
+        data.notes     = notes || null;
+        data.extraText = extraText || null;
+
+        const updated = await prisma.goldRaid.update({ where: { id: raidId }, data });
+        await gbRefresh(client, updated).catch(() => {});
+
+        return interaction.reply({ content: '✅ Анонс обновлён!', ephemeral: true });
+      } catch (err) {
+        logger.error(`gb_edit_modal failed: ${err.message}`);
+        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
+      }
+    }
+
     // ── Slash commands ─────────────────────────────────────────────────────
     if (!interaction.isChatInputCommand()) return;
 

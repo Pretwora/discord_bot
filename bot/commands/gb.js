@@ -109,6 +109,11 @@ module.exports = {
       ),
     )
     .addSubcommand(s => s
+      .setName('edit')
+      .setDescription('Редактировать анонс рейда (открывает форму)')
+      .addStringOption(o => o.setName('id').setDescription('ID рейда (если не указан — последний активный)').setRequired(false)),
+    )
+    .addSubcommand(s => s
       .setName('stats')
       .setDescription('Статистика пампера')
       .addUserOption(o => o.setName('user').setDescription('Участник (по умолч. ты)').setRequired(false)),
@@ -428,6 +433,49 @@ module.exports = {
         return interaction.reply({ content: `ℹ️ <@${target.id}> не в чёрном списке.`, ephemeral: true });
       }
       await interaction.reply({ content: `✅ <@${target.id}> удалён из чёрного списка.`, ephemeral: true });
+    }
+
+    // ── edit ───────────────────────────────────────────────────────────────────
+    else if (sub === 'edit') {
+      const raid = await getActiveRaid(guildId, interaction.options.getString('id'));
+      if (!raid) return interaction.reply({ content: '❌ Активный рейд не найден.', ephemeral: true });
+
+      const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+      const modal = new ModalBuilder()
+        .setCustomId(`gb_edit_modal_${raid.id}`)
+        .setTitle('Редактировать анонс рейда');
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_price')
+            .setLabel('Цена за токен (золото)')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('5000')
+            .setValue(raid.slotPrice != null ? String(raid.slotPrice) : '')
+            .setRequired(false),
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_notes')
+            .setLabel('Заметка (дата, время и т.д.)')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Пятница 20:00, сбор в голосовом...')
+            .setValue(raid.notes ?? '')
+            .setRequired(false),
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_extra')
+            .setLabel('Произвольный текст в embed')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Любой текст который появится в анонсе...')
+            .setValue(raid.extraText ?? '')
+            .setRequired(false),
+        ),
+      );
+
+      return interaction.showModal(modal);
     }
 
     // ── stats ──────────────────────────────────────────────────────────────────
