@@ -68,7 +68,7 @@ function CreateModal({ onClose, onCreated }) {
       raidType,
       slotPrice: slotPrice ? parseInt(slotPrice) : null,
       notes: notes || null,
-      scheduledAt: scheduledAt || null,
+      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
     });
   };
 
