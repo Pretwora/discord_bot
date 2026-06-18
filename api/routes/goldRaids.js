@@ -48,7 +48,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /api/v1/gold-raids — create from dashboard
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { notes, scheduledAt, raidType = 'GRUUL_MAGTHERIDON' } = req.body;
+    const { notes, scheduledAt, raidType = 'GRUUL_MAGTHERIDON', slotPrice } = req.body;
 
     // Убеждаемся что запись Guild существует (foreign key)
     await prisma.guild.upsert({
@@ -62,6 +62,7 @@ router.post('/', requireAuth, async (req, res) => {
         guildId: GUILD_ID,
         status: 'OPEN',
         raidType,
+        slotPrice: slotPrice != null ? parseInt(slotPrice) : null,
         announcedBy: req.user.id,
         notes: notes ?? null,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
@@ -81,12 +82,13 @@ router.post('/', requireAuth, async (req, res) => {
 // PATCH /api/v1/gold-raids/:id — update status / notes / gold
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
-    const { status, notes, totalGold, scheduledAt } = req.body;
+    const { status, notes, totalGold, scheduledAt, slotPrice } = req.body;
     const data = { updatedAt: new Date() };
     if (status) data.status = status;
     if (notes !== undefined) data.notes = notes;
     if (totalGold !== undefined) data.totalGold = totalGold;
     if (scheduledAt !== undefined) data.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    if (slotPrice !== undefined) data.slotPrice = slotPrice != null ? parseInt(slotPrice) : null;
     if (status === 'COMPLETED') data.completedAt = new Date();
 
     const raid = await prisma.goldRaid.update({ where: { id: req.params.id }, data });

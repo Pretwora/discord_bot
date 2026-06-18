@@ -67,7 +67,10 @@ function buildRaidEmbed(raid, pumpers, buyers) {
     : '';
   const notesStr = raid.notes ? `📝 ${raid.notes}\n` : '';
   const raidTypeLabel = RAID_TYPES[raid.raidType]?.label ?? raid.raidType ?? '';
-  embed.setDescription(`${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${raidTypeLabel}`);
+  const priceStr = raid.slotPrice != null
+    ? `\n> # 💰 ${raid.slotPrice.toLocaleString()} золота за вещь\n`
+    : '';
+  embed.setDescription(`${priceStr}${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${raidTypeLabel}`);
 
   // Pumpers list
   const pumperLines = pumpers.length > 0

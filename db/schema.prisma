@@ -162,6 +162,7 @@ model GoldRaid {
   guildId     String
   status      String    @default("OPEN") // OPEN | LOCKED | IN_PROGRESS | COMPLETED | CANCELLED
   raidType    String    @default("GRUUL_MAGTHERIDON") // KARAZHAN | GRUUL | MAGTHERIDON | GRUUL_MAGTHERIDON
+  slotPrice   Int?      // цена за одну вещь в голде
   announcedBy String
   messageId   String?
   channelId   String?

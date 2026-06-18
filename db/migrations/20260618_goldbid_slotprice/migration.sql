@@ -1,0 +1,1 @@
+ALTER TABLE "GoldRaid" ADD COLUMN "slotPrice" INTEGER;

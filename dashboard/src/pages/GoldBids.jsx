@@ -51,6 +51,7 @@ function fmtDate(d) {
 
 function CreateModal({ onClose, onCreated }) {
   const [raidType, setRaidType] = useState('GRUUL_MAGTHERIDON');
+  const [slotPrice, setSlotPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [error, setError] = useState('');
@@ -63,7 +64,12 @@ function CreateModal({ onClose, onCreated }) {
 
   const submit = () => {
     setError('');
-    mut.mutate({ raidType, notes: notes || null, scheduledAt: scheduledAt || null });
+    mut.mutate({
+      raidType,
+      slotPrice: slotPrice ? parseInt(slotPrice) : null,
+      notes: notes || null,
+      scheduledAt: scheduledAt || null,
+    });
   };
 
   return (
@@ -89,6 +95,18 @@ function CreateModal({ onClose, onCreated }) {
             </select>
             <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--discord-text-muted)' }} />
           </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>💰 Цена за вещь (золото) *</label>
+          <input
+            type="number"
+            min="0"
+            className="discord-input text-lg font-bold w-full"
+            placeholder="например: 5000"
+            value={slotPrice}
+            onChange={e => setSlotPrice(e.target.value)}
+            style={{ color: 'var(--discord-yellow)' }}
+          />
         </div>
         <div>
           <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>Дата и время (необязательно)</label>
@@ -171,6 +189,11 @@ function RaidDetail({ raidId, onClose }) {
             <StatusBadge status={raid.status} />
           </div>
           <p className="text-xs font-mono" style={{ color: 'var(--discord-text-muted)' }}>#{raid.id.slice(0, 8)}</p>
+          {raid.slotPrice != null && (
+            <p className="text-2xl font-bold mt-1" style={{ color: 'var(--discord-yellow)' }}>
+              💰 {raid.slotPrice.toLocaleString()} золота за вещь
+            </p>
+          )}
           {raid.notes && <p className="text-sm" style={{ color: 'var(--discord-text-muted)' }}>{raid.notes}</p>}
           {raid.scheduledAt && <p className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>📅 {fmtDate(raid.scheduledAt)}</p>}
         </div>
@@ -296,11 +319,15 @@ function RaidCard({ raid, isSelected, onSelect }) {
         </div>
         <ChevronRight size={15} style={{ color: 'var(--discord-text-muted)', flexShrink: 0 }} />
       </div>
-      <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: 'var(--discord-text-muted)' }}>
+      <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: 'var(--discord-text-muted)' }}>
         <span className="font-medium" style={{ color: 'var(--discord-text)' }}>{RAID_TYPES[raid.raidType]?.label ?? raid.raidType ?? '—'}</span>
+        {raid.slotPrice != null && (
+          <span className="font-bold text-sm px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(240,178,50,0.15)', color: 'var(--discord-yellow)' }}>
+            💰 {raid.slotPrice.toLocaleString()}g / вещь
+          </span>
+        )}
         <span className="flex items-center gap-1"><Users size={11} /> {raid.pumperCount} памперов</span>
         <span className="flex items-center gap-1"><Coins size={11} /> {raid.buyerCount} заказов</span>
-        {raid.totalGold > 0 && <span className="flex items-center gap-1" style={{ color: 'var(--discord-yellow)' }}>💰 {raid.totalGold.toLocaleString()}g</span>}
         <span className="flex items-center gap-1 ml-auto"><Clock size={11} /> {fmtDate(raid.createdAt)}</span>
       </div>
     </button>

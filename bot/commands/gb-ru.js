@@ -19,6 +19,7 @@ const data = new SlashCommandBuilder()
         { name: 'Логово Магтеридона (25 чел)',   value: 'MAGTHERIDON' },
       ),
     )
+    .addIntegerOption(o => o.setName('price').setDescription('Цена за одну вещь (золото)').setRequired(false).setMinValue(0))
     .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false)),
   )
   .addSubcommand(s => s

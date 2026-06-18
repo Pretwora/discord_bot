@@ -63,6 +63,7 @@ module.exports = {
           { name: 'Логово Магтеридона (25 чел)',   value: 'MAGTHERIDON' },
         ),
       )
+      .addIntegerOption(o => o.setName('price').setDescription('Цена за одну вещь (золото)').setRequired(false).setMinValue(0))
       .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false)),
     )
     .addSubcommand(s => s
@@ -197,8 +198,9 @@ module.exports = {
 
     // ── create ─────────────────────────────────────────────────────────────────
     else if (sub === 'create') {
-      const raidType = interaction.options.getString('type');
-      const notes    = interaction.options.getString('notes') ?? null;
+      const raidType  = interaction.options.getString('type');
+      const slotPrice = interaction.options.getInteger('price') ?? null;
+      const notes     = interaction.options.getString('notes') ?? null;
 
       // Определяем канал для анонса
       const gbChannelId = await getGbChannelId(guildId);
@@ -217,6 +219,7 @@ module.exports = {
           guildId,
           status: 'OPEN',
           raidType,
+          slotPrice,
           announcedBy: interaction.user.id,
           channelId: targetChannel.id,
           notes,
