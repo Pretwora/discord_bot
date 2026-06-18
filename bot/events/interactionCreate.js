@@ -168,7 +168,7 @@ module.exports = {
           return interaction.reply({ content: `🚫 Ты в чёрном списке.\nПричина: ${bl.reason ?? 'не указана'}`, ephemeral: true });
         }
 
-        const rows = buildBuyerSelectRows(raidId);
+        const rows = buildBuyerSelectRows(raidId, raid.raidType);
         return interaction.reply({
           content: '💰 **Выбери вещи которые хочешь купить**, затем нажми **✅ Записаться**.\nМожно выбрать несколько.',
           components: rows,

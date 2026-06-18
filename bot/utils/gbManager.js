@@ -35,6 +35,17 @@ const LOOT_TABLE = {
 const TOKEN_TYPES = ['ПРШ', 'ЛХМД', 'ВЖД'];
 const NOSHOW_THRESHOLD = 3;
 
+const RAID_TYPES = {
+  KARAZHAN:          { label: 'Каражан',              keys: ['KARAZHAN'] },
+  GRUUL:             { label: 'Логово Груула',         keys: ['GRUUL'] },
+  MAGTHERIDON:       { label: 'Логово Магтеридона',   keys: ['MAGTHERIDON'] },
+  GRUUL_MAGTHERIDON: { label: 'Груул + Магтеридон',   keys: ['GRUUL', 'MAGTHERIDON'] },
+};
+
+function getRaidKeys(raidType) {
+  return RAID_TYPES[raidType]?.keys ?? Object.keys(LOOT_TABLE);
+}
+
 // Temp storage for buyer item selection before confirmation
 const pendingSelections = new Map(); // `${raidId}:${userId}` → string[]
 
@@ -55,7 +66,8 @@ function buildRaidEmbed(raid, pumpers, buyers) {
     ? `📅 <t:${Math.floor(new Date(raid.scheduledAt).getTime() / 1000)}:F>\n`
     : '';
   const notesStr = raid.notes ? `📝 ${raid.notes}\n` : '';
-  embed.setDescription(`${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}`);
+  const raidTypeLabel = RAID_TYPES[raid.raidType]?.label ?? raid.raidType ?? '';
+  embed.setDescription(`${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${raidTypeLabel}`);
 
   // Pumpers list
   const pumperLines = pumpers.length > 0
@@ -63,8 +75,11 @@ function buildRaidEmbed(raid, pumpers, buyers) {
     : '_Нет памперов — первым вставай!_';
   embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value: pumperLines });
 
+  const raidKeys = getRaidKeys(raid.raidType);
+
   // Buyer queues per raid
   for (const [raidKey, raidData] of Object.entries(LOOT_TABLE)) {
+    if (!raidKeys.includes(raidKey)) continue;
     const lines = [];
     for (const drop of raidData.drops) {
       const tokenLines = TOKEN_TYPES.map(token => {
@@ -113,9 +128,11 @@ function buildMainRows(raidId, status) {
   ];
 }
 
-function buildBuyerSelectRows(raidId) {
+function buildBuyerSelectRows(raidId, raidType = 'GRUUL_MAGTHERIDON') {
+  const keys = getRaidKeys(raidType);
   const options = [];
   for (const [raidKey, raidData] of Object.entries(LOOT_TABLE)) {
+    if (!keys.includes(raidKey)) continue;
     for (const drop of raidData.drops) {
       for (const token of TOKEN_TYPES) {
         options.push({
@@ -155,6 +172,6 @@ function parseItemValue(value) {
 }
 
 module.exports = {
-  LOOT_TABLE, TOKEN_TYPES, NOSHOW_THRESHOLD, pendingSelections,
+  LOOT_TABLE, TOKEN_TYPES, RAID_TYPES, NOSHOW_THRESHOLD, pendingSelections,
   buildRaidEmbed, buildMainRows, buildBuyerSelectRows, parseItemValue,
 };

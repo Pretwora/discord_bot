@@ -48,7 +48,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /api/v1/gold-raids — create from dashboard
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { notes, scheduledAt } = req.body;
+    const { notes, scheduledAt, raidType = 'GRUUL_MAGTHERIDON' } = req.body;
 
     // Убеждаемся что запись Guild существует (foreign key)
     await prisma.guild.upsert({
@@ -61,6 +61,7 @@ router.post('/', requireAuth, async (req, res) => {
       data: {
         guildId: GUILD_ID,
         status: 'OPEN',
+        raidType,
         announcedBy: req.user.id,
         notes: notes ?? null,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,

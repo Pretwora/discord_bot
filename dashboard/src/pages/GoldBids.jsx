@@ -9,11 +9,18 @@ import api from '../lib/api';
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const LOOT_TABLE = {
-  GRUUL:       { name: 'Логово Груула',      emoji: '🐉', format: 25, drops: [{ slot: 'LEGS', label: 'Штаны', qty: 2 }, { slot: 'SHOULDERS', label: 'Плечи', qty: 2 }] },
-  MAGTHERIDON: { name: 'Логово Магтеридона', emoji: '🔥', format: 25, drops: [{ slot: 'CHEST', label: 'Нагрудник', qty: 2 }] },
+  GRUUL:       { name: 'Логово Груула',      emoji: '🐉', format: 25, drops: [{ slot: 'LEGS', label: 'Штаны', qty: 1 }, { slot: 'SHOULDERS', label: 'Плечи', qty: 1 }] },
+  MAGTHERIDON: { name: 'Логово Магтеридона', emoji: '🔥', format: 25, drops: [{ slot: 'CHEST', label: 'Нагрудник', qty: 1 }] },
   KARAZHAN:    { name: 'Каражан',            emoji: '🏰', format: 10, drops: [{ slot: 'GLOVES', label: 'Перчатки', qty: 1 }, { slot: 'HEAD', label: 'Голова', qty: 1 }] },
 };
 const TOKEN_TYPES = ['ПРШ', 'ЛХМД', 'ВЖД'];
+
+const RAID_TYPES = {
+  GRUUL_MAGTHERIDON: { label: 'Груул + Магтеридон', keys: ['GRUUL', 'MAGTHERIDON'] },
+  KARAZHAN:          { label: 'Каражан',             keys: ['KARAZHAN'] },
+  GRUUL:             { label: 'Логово Груула',        keys: ['GRUUL'] },
+  MAGTHERIDON:       { label: 'Логово Магтеридона',  keys: ['MAGTHERIDON'] },
+};
 
 const STATUS_MAP = {
   OPEN:        { label: 'Открыт',   color: 'var(--discord-green)' },
@@ -43,6 +50,7 @@ function fmtDate(d) {
 // ─── Create modal ─────────────────────────────────────────────────────────────
 
 function CreateModal({ onClose, onCreated }) {
+  const [raidType, setRaidType] = useState('GRUUL_MAGTHERIDON');
   const [notes, setNotes] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [error, setError] = useState('');
@@ -55,7 +63,7 @@ function CreateModal({ onClose, onCreated }) {
 
   const submit = () => {
     setError('');
-    mut.mutate({ notes: notes || null, scheduledAt: scheduledAt || null });
+    mut.mutate({ raidType, notes: notes || null, scheduledAt: scheduledAt || null });
   };
 
   return (
@@ -66,6 +74,22 @@ function CreateModal({ onClose, onCreated }) {
         </button>
         <h2 className="text-lg font-bold text-white flex items-center gap-2"><Swords size={18} /> Новый рейд</h2>
 
+        <div>
+          <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>Рейд *</label>
+          <div className="relative">
+            <select
+              className="discord-input appearance-none pr-7 w-full"
+              value={raidType}
+              onChange={e => setRaidType(e.target.value)}
+            >
+              <option value="GRUUL_MAGTHERIDON">🐉🔥 Груул + Магтеридон (25 чел)</option>
+              <option value="KARAZHAN">🏰 Каражан (10 чел)</option>
+              <option value="GRUUL">🐉 Логово Груула (25 чел)</option>
+              <option value="MAGTHERIDON">🔥 Логово Магтеридона (25 чел)</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--discord-text-muted)' }} />
+          </div>
+        </div>
         <div>
           <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>Дата и время (необязательно)</label>
           <input
@@ -143,9 +167,10 @@ function RaidDetail({ raidId, onClose }) {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-white font-semibold">Рейд {raid.id.slice(0, 8)}</span>
+            <span className="text-white font-semibold">{RAID_TYPES[raid.raidType]?.label ?? 'Рейд'}</span>
             <StatusBadge status={raid.status} />
           </div>
+          <p className="text-xs font-mono" style={{ color: 'var(--discord-text-muted)' }}>#{raid.id.slice(0, 8)}</p>
           {raid.notes && <p className="text-sm" style={{ color: 'var(--discord-text-muted)' }}>{raid.notes}</p>}
           {raid.scheduledAt && <p className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>📅 {fmtDate(raid.scheduledAt)}</p>}
         </div>
@@ -212,8 +237,10 @@ function RaidDetail({ raidId, onClose }) {
 
       {/* Buyer queues */}
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase" style={{ color: 'var(--discord-text-muted)' }}>💰 Очередь баеров</p>
-        {Object.entries(LOOT_TABLE).map(([raidKey, raidData]) => (
+        <p className="text-xs font-semibold uppercase" style={{ color: 'var(--discord-text-muted)' }}>
+          💰 Очередь баеров — {RAID_TYPES[raid.raidType]?.label ?? raid.raidType ?? ''}
+        </p>
+        {Object.entries(LOOT_TABLE).filter(([raidKey]) => (RAID_TYPES[raid.raidType]?.keys ?? Object.keys(LOOT_TABLE)).includes(raidKey)).map(([raidKey, raidData]) => (
           <div key={raidKey}>
             <p className="text-sm font-semibold text-white mb-1.5">{raidData.emoji} {raidData.name}</p>
             <div className="space-y-1">
@@ -270,6 +297,7 @@ function RaidCard({ raid, isSelected, onSelect }) {
         <ChevronRight size={15} style={{ color: 'var(--discord-text-muted)', flexShrink: 0 }} />
       </div>
       <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: 'var(--discord-text-muted)' }}>
+        <span className="font-medium" style={{ color: 'var(--discord-text)' }}>{RAID_TYPES[raid.raidType]?.label ?? raid.raidType ?? '—'}</span>
         <span className="flex items-center gap-1"><Users size={11} /> {raid.pumperCount} памперов</span>
         <span className="flex items-center gap-1"><Coins size={11} /> {raid.buyerCount} заказов</span>
         {raid.totalGold > 0 && <span className="flex items-center gap-1" style={{ color: 'var(--discord-yellow)' }}>💰 {raid.totalGold.toLocaleString()}g</span>}

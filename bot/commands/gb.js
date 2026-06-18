@@ -52,6 +52,17 @@ module.exports = {
     .addSubcommand(s => s
       .setName('create')
       .setDescription('Создать анонс голдбид рейда')
+      .addStringOption(o => o
+        .setName('type')
+        .setDescription('Тип рейда')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Груул + Магтеридон (25 чел)', value: 'GRUUL_MAGTHERIDON' },
+          { name: 'Каражан (10 чел)',             value: 'KARAZHAN' },
+          { name: 'Логово Груула (25 чел)',        value: 'GRUUL' },
+          { name: 'Логово Магтеридона (25 чел)',   value: 'MAGTHERIDON' },
+        ),
+      )
       .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false)),
     )
     .addSubcommand(s => s
@@ -178,7 +189,8 @@ module.exports = {
 
     // ── create ─────────────────────────────────────────────────────────────────
     else if (sub === 'create') {
-      const notes = interaction.options.getString('notes') ?? null;
+      const raidType = interaction.options.getString('type');
+      const notes    = interaction.options.getString('notes') ?? null;
 
       // Определяем канал для анонса
       const gbChannelId = await getGbChannelId(guildId);
@@ -196,6 +208,7 @@ module.exports = {
         data: {
           guildId,
           status: 'OPEN',
+          raidType,
           announcedBy: interaction.user.id,
           channelId: targetChannel.id,
           notes,

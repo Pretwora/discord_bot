@@ -8,6 +8,17 @@ const data = new SlashCommandBuilder()
   .addSubcommand(s => s
     .setName('create')
     .setDescription('Создать анонс голдбид рейда')
+    .addStringOption(o => o
+      .setName('type')
+      .setDescription('Тип рейда')
+      .setRequired(true)
+      .addChoices(
+        { name: 'Груул + Магтеридон (25 чел)', value: 'GRUUL_MAGTHERIDON' },
+        { name: 'Каражан (10 чел)',             value: 'KARAZHAN' },
+        { name: 'Логово Груула (25 чел)',        value: 'GRUUL' },
+        { name: 'Логово Магтеридона (25 чел)',   value: 'MAGTHERIDON' },
+      ),
+    )
     .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false)),
   )
   .addSubcommand(s => s
