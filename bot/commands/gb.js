@@ -39,7 +39,7 @@ async function refreshMessage(client, raid) {
     const buyers = await prisma.goldRaidBuyer.findMany({ where: { raidId: raid.id } });
     await msg.edit({
       embeds: [buildRaidEmbed(raid, pumpers, buyers)],
-      components: buildMainRows(raid.id, raid.status),
+      components: buildMainRows(raid.id, raid.status, raid.pumpersEnabled !== false),
     });
   } catch {}
 }
@@ -64,6 +64,7 @@ module.exports = {
         ),
       )
       .addIntegerOption(o => o.setName('price').setDescription('Цена за одну вещь (золото)').setRequired(false).setMinValue(0))
+      .addBooleanOption(o => o.setName('pumpers').setDescription('Набор памперов (по умолчанию: да)').setRequired(false))
       .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false)),
     )
     .addSubcommand(s => s
@@ -203,9 +204,10 @@ module.exports = {
 
     // ── create ─────────────────────────────────────────────────────────────────
     else if (sub === 'create') {
-      const raidType  = interaction.options.getString('type');
-      const slotPrice = interaction.options.getInteger('price') ?? null;
-      const notes     = interaction.options.getString('notes') ?? null;
+      const raidType       = interaction.options.getString('type');
+      const slotPrice      = interaction.options.getInteger('price') ?? null;
+      const pumpersEnabled = interaction.options.getBoolean('pumpers') ?? true;
+      const notes          = interaction.options.getString('notes') ?? null;
 
       // Определяем канал для анонса
       const gbChannelId = await getGbChannelId(guildId);
@@ -225,6 +227,7 @@ module.exports = {
           status: 'OPEN',
           raidType,
           slotPrice,
+          pumpersEnabled,
           announcedBy: interaction.user.id,
           channelId: targetChannel.id,
           notes,
@@ -232,7 +235,7 @@ module.exports = {
       });
 
       const embed = buildRaidEmbed(raid, [], []);
-      const rows = buildMainRows(raid.id, 'OPEN');
+      const rows = buildMainRows(raid.id, 'OPEN', raid.pumpersEnabled !== false);
 
       const msg = await targetChannel.send({ embeds: [embed], components: rows });
 

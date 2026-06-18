@@ -1,0 +1,1 @@
+ALTER TABLE "GoldRaid" ADD COLUMN "pumpersEnabled" BOOLEAN NOT NULL DEFAULT true;

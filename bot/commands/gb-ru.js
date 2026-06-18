@@ -20,6 +20,7 @@ const data = new SlashCommandBuilder()
       ),
     )
     .addIntegerOption(o => o.setName('price').setDescription('Цена за одну вещь (золото)').setRequired(false).setMinValue(0))
+    .addBooleanOption(o => o.setName('pumpers').setDescription('Набор памперов (по умолчанию: да)').setRequired(false))
     .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false)),
   )
   .addSubcommand(s => s

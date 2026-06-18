@@ -177,7 +177,7 @@ module.exports = function connectDashboardSocket(client) {
         }
 
         const embed = buildRaidEmbed(raid, [], []);
-        const rows = buildMainRows(raid.id, 'OPEN');
+        const rows = buildMainRows(raid.id, 'OPEN', raid.pumpersEnabled !== false);
         const msg = await channel.send({ embeds: [embed], components: rows });
 
         await prisma.goldRaid.update({

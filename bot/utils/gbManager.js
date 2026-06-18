@@ -73,11 +73,13 @@ function buildRaidEmbed(raid, pumpers, buyers) {
   const extraStr = raid.extraText ? `\n${raid.extraText}\n` : '';
   embed.setDescription(`${priceStr}${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${raidTypeLabel}${extraStr}`);
 
-  // Pumpers list
-  const pumperLines = pumpers.length > 0
-    ? pumpers.map(p => `${p.confirmed ? '✅' : '⬜'} <@${p.userId}>`).join('  ')
-    : '_Нет памперов — первым вставай!_';
-  embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value: pumperLines });
+  // Pumpers list (only if enabled)
+  if (raid.pumpersEnabled !== false) {
+    const pumperLines = pumpers.length > 0
+      ? pumpers.map(p => `${p.confirmed ? '✅' : '⬜'} <@${p.userId}>`).join('  ')
+      : '_Нет памперов — первым вставай!_';
+    embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value: pumperLines });
+  }
 
   const raidKeys = getRaidKeys(raid.raidType);
 
@@ -114,22 +116,29 @@ function buildRaidEmbed(raid, pumpers, buyers) {
   return embed;
 }
 
-function buildMainRows(raidId, status) {
+function buildMainRows(raidId, status, pumpersEnabled = true) {
   const open = status === 'OPEN';
-  return [
-    new ActionRowBuilder().addComponents(
+  const buttons = [];
+
+  if (pumpersEnabled) {
+    buttons.push(
       new ButtonBuilder()
         .setCustomId(`gb_pumper_join_${raidId}`)
         .setLabel('⚔️ Я пампер')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!open),
-      new ButtonBuilder()
-        .setCustomId(`gb_buyer_menu_${raidId}`)
-        .setLabel('💰 Заказать шмот')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!open),
-    ),
-  ];
+    );
+  }
+
+  buttons.push(
+    new ButtonBuilder()
+      .setCustomId(`gb_buyer_menu_${raidId}`)
+      .setLabel('💰 Заказать токен')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(!open),
+  );
+
+  return [new ActionRowBuilder().addComponents(...buttons)];
 }
 
 function buildBuyerSelectRows(raidId, raidType = 'GRUUL_MAGTHERIDON') {

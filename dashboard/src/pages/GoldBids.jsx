@@ -49,9 +49,26 @@ function fmtDate(d) {
 
 // ─── Create modal ─────────────────────────────────────────────────────────────
 
+function Toggle({ value, onChange, label }) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer select-none">
+      <div
+        className="relative w-10 h-5 rounded-full transition-colors"
+        style={{ backgroundColor: value ? 'var(--discord-blurple)' : 'var(--discord-border)' }}
+        onClick={() => onChange(!value)}
+      >
+        <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+          style={{ transform: value ? 'translateX(22px)' : 'translateX(2px)' }} />
+      </div>
+      <span className="text-sm" style={{ color: 'var(--discord-text)' }}>{label}</span>
+    </label>
+  );
+}
+
 function CreateModal({ onClose, onCreated }) {
   const [raidType, setRaidType] = useState('GRUUL_MAGTHERIDON');
   const [slotPrice, setSlotPrice] = useState('');
+  const [pumpersEnabled, setPumpersEnabled] = useState(true);
   const [notes, setNotes] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [error, setError] = useState('');
@@ -67,6 +84,7 @@ function CreateModal({ onClose, onCreated }) {
     mut.mutate({
       raidType,
       slotPrice: slotPrice ? parseInt(slotPrice) : null,
+      pumpersEnabled,
       notes: notes || null,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
     });
@@ -96,6 +114,8 @@ function CreateModal({ onClose, onCreated }) {
             <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--discord-text-muted)' }} />
           </div>
         </div>
+        <Toggle value={pumpersEnabled} onChange={setPumpersEnabled} label="Набор памперов" />
+
         <div>
           <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>💰 Цена за токен (золото)</label>
           <input
@@ -182,12 +202,14 @@ function RaidDetail({ raidId, onClose }) {
   const [editPrice, setEditPrice] = useState('');
   const [editScheduledAt, setEditScheduledAt] = useState('');
   const [editText, setEditText] = useState('');
+  const [editPumpersEnabled, setEditPumpersEnabled] = useState(true);
 
   function startEdit() {
     setEditNotes(raid.notes ?? '');
     setEditPrice(raid.slotPrice != null ? String(raid.slotPrice) : '');
     setEditScheduledAt(raid.scheduledAt ? new Date(raid.scheduledAt).toISOString().slice(0, 16) : '');
     setEditText(raid.extraText ?? '');
+    setEditPumpersEnabled(raid.pumpersEnabled !== false);
     setEditing(true);
   }
 
@@ -197,6 +219,7 @@ function RaidDetail({ raidId, onClose }) {
       slotPrice: editPrice ? parseInt(editPrice) : null,
       scheduledAt: editScheduledAt ? new Date(editScheduledAt).toISOString() : null,
       extraText: editText || null,
+      pumpersEnabled: editPumpersEnabled,
     });
   }
 
@@ -268,6 +291,7 @@ function RaidDetail({ raidId, onClose }) {
               placeholder="Любой текст который появится в анонсе..."
               value={editText} onChange={e => setEditText(e.target.value)} />
           </div>
+          <Toggle value={editPumpersEnabled} onChange={setEditPumpersEnabled} label="Набор памперов" />
           <div className="flex gap-2 justify-end">
             <button className="discord-btn discord-btn-ghost text-sm" onClick={() => setEditing(false)}>Отмена</button>
             <button className="discord-btn discord-btn-primary text-sm flex items-center gap-1.5"
