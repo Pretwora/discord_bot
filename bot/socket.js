@@ -148,6 +148,13 @@ module.exports = function connectDashboardSocket(client) {
         await endGiveaway(client, giveawayId);
       } else if (event === 'giveaway:reroll') {
         await rerollGiveaway(client, giveawayId, count ?? 1);
+      } else if (event === 'goldbid:refresh') {
+        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
+        if (raid) {
+          const { refreshMessage: gbRefresh } = require('./commands/gb');
+          await gbRefresh(client, raid).catch(() => {});
+        }
+
       } else if (event === 'goldbid:create') {
         const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
         if (!raid) return;

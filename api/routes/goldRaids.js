@@ -92,6 +92,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
     if (status === 'COMPLETED') data.completedAt = new Date();
 
     const raid = await prisma.goldRaid.update({ where: { id: req.params.id }, data });
+    req.io.emit('bot:cmd', { event: 'goldbid:refresh', raidId: raid.id });
     writeAuditLog({ guildId: GUILD_ID, actorId: req.user.id, action: 'GB_UPDATE', meta: { raidId: raid.id, status } }).catch(() => {});
     res.json(raid);
   } catch (err) {
@@ -102,10 +103,11 @@ router.patch('/:id', requireAuth, async (req, res) => {
 // DELETE /api/v1/gold-raids/:id
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    await prisma.goldRaid.update({
+    const raid = await prisma.goldRaid.update({
       where: { id: req.params.id },
       data: { status: 'CANCELLED', updatedAt: new Date() },
     });
+    req.io.emit('bot:cmd', { event: 'goldbid:refresh', raidId: raid.id });
     writeAuditLog({ guildId: GUILD_ID, actorId: req.user.id, action: 'GB_CANCEL', meta: { raidId: req.params.id } }).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
