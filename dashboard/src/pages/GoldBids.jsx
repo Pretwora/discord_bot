@@ -47,6 +47,14 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+// Converts UTC ISO string to local datetime-local input value ("YYYY-MM-DDTHH:mm")
+function toLocalDatetimeInput(utcStr) {
+  if (!utcStr) return '';
+  const d = new Date(utcStr);
+  const localMs = d.getTime() - d.getTimezoneOffset() * 60000;
+  return new Date(localMs).toISOString().slice(0, 16);
+}
+
 // ─── Create modal ─────────────────────────────────────────────────────────────
 
 function Toggle({ value, onChange, label }) {
@@ -207,7 +215,7 @@ function RaidDetail({ raidId, onClose }) {
   function startEdit() {
     setEditNotes(raid.notes ?? '');
     setEditPrice(raid.slotPrice != null ? String(raid.slotPrice) : '');
-    setEditScheduledAt(raid.scheduledAt ? new Date(raid.scheduledAt).toISOString().slice(0, 16) : '');
+    setEditScheduledAt(toLocalDatetimeInput(raid.scheduledAt));
     setEditText(raid.extraText ?? '');
     setEditPumpersEnabled(raid.pumpersEnabled !== false);
     setEditing(true);
