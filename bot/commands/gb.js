@@ -140,10 +140,18 @@ module.exports = {
         });
       }
 
+      const UNTRUSTED_ROLE_ID = '421361784885084172'; // Недоверенный — новые участники до верификации
+
       // Set permissions: @everyone читает + кнопки, не пишет. Бот — всё.
       await gbChannel.permissionOverwrites.set([
         {
           id: interaction.guild.roles.everyone.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+          deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.SendMessagesInThreads, PermissionFlagsBits.AddReactions],
+        },
+        {
+          // Новые участники (до верификации) тоже могут видеть канал и жать кнопки
+          id: UNTRUSTED_ROLE_ID,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
           deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.SendMessagesInThreads, PermissionFlagsBits.AddReactions],
         },
