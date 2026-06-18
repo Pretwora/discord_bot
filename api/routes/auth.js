@@ -5,7 +5,8 @@ const axios = require('axios');
 const DISCORD_API = 'https://discord.com/api/v10';
 const BOT_HEADERS = () => ({ Authorization: `Bot ${process.env.DISCORD_TOKEN}` });
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
-const ADMIN_ROLE_NAME = (process.env.ADMIN_ROLE_NAME || 'Управление').toLowerCase();
+const ADMIN_ROLE_NAMES = (process.env.ADMIN_ROLE_NAME || 'Управление')
+  .split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
 
 // Step 1 — redirect to Discord OAuth2
 router.get('/discord', (_req, res) => {
@@ -61,11 +62,12 @@ router.get('/callback', async (req, res) => {
     const isOwner = guild.owner_id === user.id;
 
     if (!isOwner) {
-      // Check if user has the admin role by name
+      // Check if user has any of the allowed admin roles
       const rolesRes = await axios.get(`${DISCORD_API}/guilds/${GUILD_ID}/roles`, { headers: BOT_HEADERS() });
-      const adminRole = rolesRes.data.find(r => r.name.toLowerCase() === ADMIN_ROLE_NAME);
+      const allowedRoles = rolesRes.data.filter(r => ADMIN_ROLE_NAMES.includes(r.name.toLowerCase()));
+      const hasAccess = allowedRoles.some(r => member.roles.includes(r.id));
 
-      if (!adminRole || !member.roles.includes(adminRole.id)) {
+      if (!hasAccess) {
         return res.status(403).json({ error: 'access_denied', reason: 'no_permission' });
       }
     }
