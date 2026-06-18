@@ -48,7 +48,6 @@ function getRaidKeys(raidType) {
 
 // Temp storage for buyer item selection before confirmation
 const pendingSelections = new Map(); // `${raidId}:${userId}` → string[]
-const pendingCharNames  = new Map(); // `${raidId}:${userId}` → string
 
 const STATUS_LABELS = {
   OPEN:        '🟢 Запись открыта',
@@ -186,6 +185,6 @@ function parseItemValue(value) {
 }
 
 module.exports = {
-  LOOT_TABLE, TOKEN_TYPES, RAID_TYPES, NOSHOW_THRESHOLD, pendingSelections, pendingCharNames,
+  LOOT_TABLE, TOKEN_TYPES, RAID_TYPES, NOSHOW_THRESHOLD, pendingSelections,
   buildRaidEmbed, buildMainRows, buildBuyerSelectRows, parseItemValue,
 };

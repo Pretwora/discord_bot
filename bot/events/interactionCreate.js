@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const { refreshMessage } = require('../utils/giveawayManager');
 const {
   buildRaidEmbed, buildMainRows, buildBuyerSelectRows,
-  pendingSelections, pendingCharNames, parseItemValue, NOSHOW_THRESHOLD, LOOT_TABLE,
+  pendingSelections, parseItemValue, NOSHOW_THRESHOLD, LOOT_TABLE,
 } = require('../utils/gbManager');
 const { refreshMessage: gbRefresh } = require('../commands/gb');
 
@@ -152,7 +152,7 @@ module.exports = {
       }
     }
 
-    // ── GB: баер открывает меню → сначала спрашиваем ник через Modal ────────
+    // ── GB: баер открывает меню выбора ────────────────────────────────────
     if (interaction.isButton() && interaction.customId.startsWith('gb_buyer_menu_')) {
       const raidId = interaction.customId.replace('gb_buyer_menu_', '');
       try {
@@ -168,52 +168,14 @@ module.exports = {
           return interaction.reply({ content: `🚫 Ты в чёрном списке.\nПричина: ${bl.reason ?? 'не указана'}`, ephemeral: true });
         }
 
-        // Шаг 1: спрашиваем ник персонажа через Modal
-        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-        const modal = new ModalBuilder()
-          .setCustomId(`gb_buyer_charname_${raidId}`)
-          .setTitle('Ник персонажа');
-
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('character_name')
-              .setLabel('Ник персонажа в игре')
-              .setPlaceholder('Например: Fexler')
-              .setStyle(TextInputStyle.Short)
-              .setMaxLength(50)
-              .setRequired(true),
-          ),
-        );
-
-        return interaction.showModal(modal);
-      } catch (err) {
-        logger.error(`gb_buyer_menu failed: ${err.message}`);
-        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
-      }
-    }
-
-    // ── GB: баер ввёл ник → показываем меню выбора слотов ────────────────
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('gb_buyer_charname_')) {
-      const raidId = interaction.customId.replace('gb_buyer_charname_', '');
-      try {
-        const characterName = interaction.fields.getTextInputValue('character_name').trim();
-
-        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
-        if (!raid || raid.status !== 'OPEN') {
-          return interaction.reply({ content: '❌ Запись в рейд закрыта.', ephemeral: true });
-        }
-
-        // Сохраняем ник, показываем select меню
-        pendingCharNames.set(`${raidId}:${interaction.user.id}`, characterName);
         const rows = buildBuyerSelectRows(raidId, raid.raidType);
         return interaction.reply({
-          content: `👤 Персонаж: **${characterName}**\n\n💰 Выбери токены которые хочешь купить, затем нажми **✅ Записаться**.`,
+          content: '💰 **Выбери вещи которые хочешь купить**, затем нажми **✅ Записаться**.\nМожно выбрать несколько.',
           components: rows,
           ephemeral: true,
         });
       } catch (err) {
-        logger.error(`gb_buyer_charname failed: ${err.message}`);
+        logger.error(`gb_buyer_menu failed: ${err.message}`);
         return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
       }
     }
@@ -225,32 +187,57 @@ module.exports = {
       return interaction.deferUpdate();
     }
 
-    // ── GB: баер нажимает "Записаться" → сразу регистрируем ──────────────
+    // ── GB: баер нажимает "Записаться" → показываем Modal с ником ──────────
     if (interaction.isButton() && interaction.customId.startsWith('gb_buyer_register_')) {
       const raidId = interaction.customId.replace('gb_buyer_register_', '');
-      const key = `${raidId}:${interaction.user.id}`;
-      const selected = pendingSelections.get(key);
-      const characterName = pendingCharNames.get(key);
-
+      const selected = pendingSelections.get(`${raidId}:${interaction.user.id}`);
       if (!selected || selected.length === 0) {
-        return interaction.update({ content: '❌ Сначала выбери токены из списка выше.', components: [] });
-      }
-      if (!characterName) {
-        return interaction.update({ content: '❌ Сессия истекла — нажми «Заказать токен» заново.', components: [] });
+        return interaction.reply({ content: '❌ Сначала выбери вещи из списка выше.', ephemeral: true });
       }
 
+      const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+      const modal = new ModalBuilder()
+        .setCustomId(`gb_buyer_modal_${raidId}`)
+        .setTitle('Запись в голдбид рейд');
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('character_name')
+            .setLabel('Ник персонажа в игре')
+            .setPlaceholder('Например: Fexler')
+            .setStyle(TextInputStyle.Short)
+            .setMaxLength(50)
+            .setRequired(true),
+        ),
+      );
+
+      return interaction.showModal(modal);
+    }
+
+    // ── GB: баер сабмитит Modal → создаём записи с проверкой вместимости ──
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('gb_buyer_modal_')) {
+      const raidId = interaction.customId.replace('gb_buyer_modal_', '');
       try {
-        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
-        if (!raid || raid.status !== 'OPEN') {
-          return interaction.update({ content: '❌ Запись в рейд закрыта.', components: [] });
+        const characterName = interaction.fields.getTextInputValue('character_name').trim();
+        const selected = pendingSelections.get(`${raidId}:${interaction.user.id}`);
+        if (!selected || selected.length === 0) {
+          return interaction.reply({ content: '❌ Сессия истекла — открой меню записи заново.', ephemeral: true });
         }
 
+        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
+        if (!raid || raid.status !== 'OPEN') {
+          return interaction.reply({ content: '❌ Запись в рейд закрыта.', ephemeral: true });
+        }
+
+        // Фильтруем: убираем уже заказанные этим юзером
         const myExisting = await prisma.goldRaidBuyer.findMany({
           where: { raidId, userId: interaction.user.id, status: 'QUEUED' },
         });
         const myKeys = new Set(myExisting.map(b => `${b.raidTarget}|${b.slot}|${b.tokenType}`));
-        const toAdd = selected.filter(v => !myKeys.has(v));
+        let toAdd = selected.filter(v => !myKeys.has(v));
 
+        // Проверяем вместимость каждого слота
         const fullItems = [];
         const finalAdd = [];
         for (const v of toAdd) {
@@ -259,14 +246,17 @@ module.exports = {
           const count = await prisma.goldRaidBuyer.count({
             where: { raidId, raidTarget, slot, tokenType, status: 'QUEUED' },
           });
-          if (count >= qty) { fullItems.push(v); } else { finalAdd.push({ raidTarget, slot, tokenType }); }
+          if (count >= qty) {
+            fullItems.push(v);
+          } else {
+            finalAdd.push({ raidTarget, slot, tokenType });
+          }
         }
 
         if (finalAdd.length === 0) {
-          pendingSelections.delete(key);
-          pendingCharNames.delete(key);
-          const fullMsg = fullItems.length > 0 ? 'Все выбранные слоты уже заполнены.' : 'Ты уже стоишь в очереди на все эти токены.';
-          return interaction.update({ content: `ℹ️ ${fullMsg}`, components: [] });
+          pendingSelections.delete(`${raidId}:${interaction.user.id}`);
+          const fullMsg = fullItems.length > 0 ? ' Все выбранные слоты уже заполнены.' : ' Ты уже стоишь в очереди на все эти вещи.';
+          return interaction.reply({ content: `ℹ️${fullMsg}`, ephemeral: true });
         }
 
         await prisma.goldRaidBuyer.createMany({
@@ -281,16 +271,15 @@ module.exports = {
           })),
         });
 
-        pendingSelections.delete(key);
-        pendingCharNames.delete(key);
+        pendingSelections.delete(`${raidId}:${interaction.user.id}`);
         await gbRefresh(client, raid).catch(() => {});
 
-        let msg = `✅ Записан на **${finalAdd.length}** токен${finalAdd.length === 1 ? '' : 'а'}! Персонаж: **${characterName}**`;
-        if (fullItems.length > 0) msg += `\n⚠️ ${fullItems.length} слот(а) уже заполнены.`;
-        return interaction.update({ content: msg, components: [] });
+        let msg = `💰 Записан на **${finalAdd.length}** вещ${finalAdd.length === 1 ? 'ь' : 'и'}! Персонаж: **${characterName}**`;
+        if (fullItems.length > 0) msg += `\n⚠️ ${fullItems.length} слот(а) уже заполнены — туда не попал.`;
+        return interaction.reply({ content: msg, ephemeral: true });
       } catch (err) {
-        logger.error(`gb_buyer_register failed: ${err.message}`);
-        return interaction.update({ content: '❌ Ошибка. Попробуй ещё раз.', components: [] });
+        logger.error(`gb_buyer_modal failed: ${err.message}`);
+        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
       }
     }
 
@@ -302,7 +291,6 @@ module.exports = {
           where: { raidId, userId: interaction.user.id, status: 'QUEUED' },
         });
         pendingSelections.delete(`${raidId}:${interaction.user.id}`);
-        pendingCharNames.delete(`${raidId}:${interaction.user.id}`);
 
         const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
         if (raid) await gbRefresh(client, raid).catch(() => {});
