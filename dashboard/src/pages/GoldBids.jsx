@@ -97,7 +97,7 @@ function CreateModal({ onClose, onCreated }) {
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>💰 Цена за вещь (золото) *</label>
+          <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>💰 Цена за токен (золото)</label>
           <input
             type="number"
             min="0"
@@ -191,7 +191,7 @@ function RaidDetail({ raidId, onClose }) {
           <p className="text-xs font-mono" style={{ color: 'var(--discord-text-muted)' }}>#{raid.id.slice(0, 8)}</p>
           {raid.slotPrice != null && (
             <p className="text-2xl font-bold mt-1" style={{ color: 'var(--discord-yellow)' }}>
-              💰 {raid.slotPrice.toLocaleString()} золота за вещь
+              💰 {raid.slotPrice.toLocaleString()} золота за токен
             </p>
           )}
           {raid.notes && <p className="text-sm" style={{ color: 'var(--discord-text-muted)' }}>{raid.notes}</p>}

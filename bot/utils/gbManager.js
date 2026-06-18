@@ -68,7 +68,7 @@ function buildRaidEmbed(raid, pumpers, buyers) {
   const notesStr = raid.notes ? `📝 ${raid.notes}\n` : '';
   const raidTypeLabel = RAID_TYPES[raid.raidType]?.label ?? raid.raidType ?? '';
   const priceStr = raid.slotPrice != null
-    ? `\n> # 💰 ${raid.slotPrice.toLocaleString()} золота за вещь\n`
+    ? `\n> # 💰 ${raid.slotPrice.toLocaleString()} золота за токен\n`
     : '';
   embed.setDescription(`${priceStr}${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${raidTypeLabel}`);
 
