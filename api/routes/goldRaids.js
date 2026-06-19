@@ -28,6 +28,111 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/v1/gold-raids/prices — loot table with current prices
+router.get('/prices', requireAuth, async (req, res) => {
+  try {
+    const { LOOT_TABLE } = require('../../config/lootTable');
+    const guild = await prisma.guild.findUnique({ where: { id: GUILD_ID } });
+    let goldPrices = {};
+    try { goldPrices = JSON.parse(guild?.settings || '{}').goldPrices ?? {}; } catch {}
+
+    const result = Object.entries(LOOT_TABLE).map(([raidKey, raid]) => ({
+      raidKey,
+      name: raid.name,
+      emoji: raid.emoji,
+      items: raid.items.map(item => {
+        const key = `${raidKey}|${item.slot}|${item.tokenType}`;
+        return {
+          key,
+          slot: item.slot,
+          tokenType: item.tokenType,
+          label: item.label,
+          section: item.section,
+          defaultPrice: item.defaultPrice,
+          price: goldPrices[key] ?? item.defaultPrice,
+        };
+      }),
+    }));
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/v1/gold-raids/prices — update price overrides
+router.patch('/prices', requireAuth, async (req, res) => {
+  try {
+    const { prices } = req.body; // { "GRUUL|GRONN_AXE|UNIQUE": 12000, ... }
+    if (!prices || typeof prices !== 'object') {
+      return res.status(400).json({ error: 'prices object required' });
+    }
+
+    const guild = await prisma.guild.findUnique({ where: { id: GUILD_ID } });
+    let settings = {};
+    try { settings = JSON.parse(guild?.settings || '{}'); } catch {}
+
+    settings.goldPrices = { ...(settings.goldPrices ?? {}), ...prices };
+
+    await prisma.guild.update({
+      where: { id: GUILD_ID },
+      data: { settings: JSON.stringify(settings) },
+    });
+
+    await writeAuditLog({
+      guildId: GUILD_ID,
+      actorId: req.user?.username || 'Admin',
+      action: 'settings_update',
+      meta: { detail: `gold prices updated: ${Object.keys(prices).join(', ')}` },
+      source: 'DASHBOARD',
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/v1/gold-raids/stats/leaderboard
+router.get('/stats/leaderboard', requireAuth, async (req, res) => {
+  try {
+    const stats = await prisma.goldRaidUserStats.findMany({
+      where: { guildId: GUILD_ID },
+      orderBy: { pumperGold: 'desc' },
+      take: 20,
+    });
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/v1/gold-raids/blacklist/all
+router.get('/blacklist/all', requireAuth, async (req, res) => {
+  try {
+    const list = await prisma.goldRaidBlacklist.findMany({
+      where: { guildId: GUILD_ID },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/v1/gold-raids/blacklist/:userId
+router.delete('/blacklist/:userId', requireAuth, async (req, res) => {
+  try {
+    await prisma.goldRaidBlacklist.deleteMany({
+      where: { guildId: GUILD_ID, userId: req.params.userId },
+    });
+    writeAuditLog({ guildId: GUILD_ID, actorId: req.user.id, action: 'GB_UNBLACKLIST', meta: { userId: req.params.userId } }).catch(() => {});
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/v1/gold-raids/:id
 router.get('/:id', requireAuth, async (req, res) => {
   try {
@@ -118,46 +223,6 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/v1/gold-raids/stats/leaderboard
-router.get('/stats/leaderboard', requireAuth, async (req, res) => {
-  try {
-    const stats = await prisma.goldRaidUserStats.findMany({
-      where: { guildId: GUILD_ID },
-      orderBy: { pumperGold: 'desc' },
-      take: 20,
-    });
-    res.json(stats);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/v1/gold-raids/blacklist/all
-router.get('/blacklist/all', requireAuth, async (req, res) => {
-  try {
-    const list = await prisma.goldRaidBlacklist.findMany({
-      where: { guildId: GUILD_ID },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json(list);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// DELETE /api/v1/gold-raids/blacklist/:userId
-router.delete('/blacklist/:userId', requireAuth, async (req, res) => {
-  try {
-    await prisma.goldRaidBlacklist.deleteMany({
-      where: { guildId: GUILD_ID, userId: req.params.userId },
-    });
-    writeAuditLog({ guildId: GUILD_ID, actorId: req.user.id, action: 'GB_UNBLACKLIST', meta: { userId: req.params.userId } }).catch(() => {});
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // PATCH /api/v1/gold-raids/:id/buyer/:buyerId — update buyer status
 router.patch('/:id/buyer/:buyerId', requireAuth, async (req, res) => {
   try {
@@ -168,71 +233,6 @@ router.patch('/:id/buyer/:buyerId', requireAuth, async (req, res) => {
     if (noShow !== undefined) data.noShow = noShow;
     const buyer = await prisma.goldRaidBuyer.update({ where: { id: req.params.buyerId }, data });
     res.json(buyer);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/v1/gold-raids/prices — loot table with current prices
-router.get('/prices', requireAuth, async (req, res) => {
-  try {
-    const { LOOT_TABLE } = require('../../config/lootTable');
-    const guild = await prisma.guild.findUnique({ where: { id: GUILD_ID } });
-    let goldPrices = {};
-    try { goldPrices = JSON.parse(guild?.settings || '{}').goldPrices ?? {}; } catch {}
-
-    const result = Object.entries(LOOT_TABLE).map(([raidKey, raid]) => ({
-      raidKey,
-      name: raid.name,
-      emoji: raid.emoji,
-      items: raid.items.map(item => {
-        const key = `${raidKey}|${item.slot}|${item.tokenType}`;
-        return {
-          key,
-          slot: item.slot,
-          tokenType: item.tokenType,
-          label: item.label,
-          section: item.section,
-          defaultPrice: item.defaultPrice,
-          price: goldPrices[key] ?? item.defaultPrice,
-        };
-      }),
-    }));
-
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PATCH /api/v1/gold-raids/prices — update price overrides
-router.patch('/prices', requireAuth, async (req, res) => {
-  try {
-    const { prices } = req.body; // { "GRUUL|GRONN_AXE|UNIQUE": 12000, ... }
-    if (!prices || typeof prices !== 'object') {
-      return res.status(400).json({ error: 'prices object required' });
-    }
-
-    const guild = await prisma.guild.findUnique({ where: { id: GUILD_ID } });
-    let settings = {};
-    try { settings = JSON.parse(guild?.settings || '{}'); } catch {}
-
-    settings.goldPrices = { ...(settings.goldPrices ?? {}), ...prices };
-
-    await prisma.guild.update({
-      where: { id: GUILD_ID },
-      data: { settings: JSON.stringify(settings) },
-    });
-
-    await writeAuditLog({
-      guildId: GUILD_ID,
-      actorId: req.user?.username || 'Admin',
-      action: 'settings_update',
-      meta: { detail: `gold prices updated: ${Object.keys(prices).join(', ')}` },
-      source: 'DASHBOARD',
-    });
-
-    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
