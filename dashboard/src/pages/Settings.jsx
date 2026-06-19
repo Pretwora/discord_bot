@@ -160,7 +160,12 @@ function GoldBidTab() {
                   className="flex items-center justify-between px-3 py-2 rounded"
                   style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
                 >
-                  <span className="text-sm text-white">{item.label}</span>
+                  <div className="flex items-center gap-2">
+                    {item.icon && (
+                      <img src={item.icon} alt="" className="w-7 h-7 rounded" style={{ imageRendering: 'pixelated' }} />
+                    )}
+                    <span className="text-sm text-white">{item.label}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     {getPrice(item) !== item.defaultPrice && (
                       <span className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>

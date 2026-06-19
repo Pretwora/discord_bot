@@ -1,5 +1,9 @@
 // Shared loot table — used by both bot and API
-const LOOT_TABLE = {
+const _ITEM_ICONS = (() => {
+  try { return require('./itemIcons.json'); } catch { return {}; }
+})();
+
+const LOOT_TABLE_RAW = {
   KARAZHAN: {
     name: 'Каражан', emoji: '🏰', format: 10,
     items: [
@@ -67,5 +71,16 @@ const LOOT_TABLE = {
     ],
   },
 };
+
+// Merge icons into items
+const LOOT_TABLE = Object.fromEntries(
+  Object.entries(LOOT_TABLE_RAW).map(([raidKey, raid]) => [raidKey, {
+    ...raid,
+    items: raid.items.map(item => ({
+      ...item,
+      icon: _ITEM_ICONS[`${raidKey}|${item.slot}|${item.tokenType}`] ?? null,
+    })),
+  }])
+);
 
 module.exports = { LOOT_TABLE };

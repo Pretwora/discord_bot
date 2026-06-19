@@ -48,6 +48,7 @@ router.get('/prices', requireAuth, async (req, res) => {
           tokenType: item.tokenType,
           label: item.label,
           section: item.section,
+          icon: item.icon ?? null,
           defaultPrice: item.defaultPrice,
           price: goldPrices[key] ?? item.defaultPrice,
         };
