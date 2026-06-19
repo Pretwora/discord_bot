@@ -3,6 +3,7 @@ const {
   StringSelectMenuBuilder,
 } = require('discord.js');
 const { LOOT_TABLE: LOOT_TABLE_BASE } = require('../../config/lootTable');
+const _ITEM_EMOJIS = (() => { try { return require('../../config/itemEmojis.json'); } catch { return {}; } })();
 
 // Add qty=1 default to every item (qty lives in bot only, not shared config)
 const LOOT_TABLE = Object.fromEntries(
@@ -183,11 +184,16 @@ function buildBuyerSelectRows(raidId, raidType = 'GRUUL_MAGTHERIDON', goldPrices
     const tokens  = raidData.items.filter(i => i.tokenType !== 'UNIQUE');
     const uniques = raidData.items.filter(i => i.tokenType === 'UNIQUE');
 
-    const makeOpt = (item) => ({
-      label: `${item.label} — ${fmtPrice(getItemPrice(goldPrices, raidKey, item.slot, item.tokenType))}`,
-      description: `${raidData.name} • ${item.tokenType === 'UNIQUE' ? '🏆 Уникальный' : '🎖️ Токен'}`,
-      value: `${raidKey}|${item.slot}|${item.tokenType}`,
-    });
+    const makeOpt = (item) => {
+      const emojiKey = `${raidKey}|${item.slot}|${item.tokenType}`;
+      const emoji = _ITEM_EMOJIS[emojiKey];
+      return {
+        label: `${item.label} — ${fmtPrice(getItemPrice(goldPrices, raidKey, item.slot, item.tokenType))}`,
+        description: `${raidData.name} • ${item.tokenType === 'UNIQUE' ? '🏆 Уникальный' : '🎖️ Токен'}`,
+        value: emojiKey,
+        ...(emoji ? { emoji: { id: emoji.id, name: emoji.name } } : {}),
+      };
+    };
 
     if (tokens.length + uniques.length <= 25) {
       // All fits in one select

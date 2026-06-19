@@ -1,0 +1,206 @@
+{
+  "KARAZHAN|GLOVES|ПРШ": {
+    "id": "1517492310613430292",
+    "name": "gb_inv_gauntlets_27"
+  },
+  "KARAZHAN|GLOVES|ВЖД": {
+    "id": "1517492310613430292",
+    "name": "gb_inv_gauntlets_27"
+  },
+  "KARAZHAN|GLOVES|ОРМЧ": {
+    "id": "1517492310613430292",
+    "name": "gb_inv_gauntlets_27"
+  },
+  "KARAZHAN|HEAD|ПРШ": {
+    "id": "1517492315751710870",
+    "name": "gb_inv_helmet_24"
+  },
+  "KARAZHAN|HEAD|ВЖД": {
+    "id": "1517492315751710870",
+    "name": "gb_inv_helmet_24"
+  },
+  "KARAZHAN|HEAD|ОРМЧ": {
+    "id": "1517492315751710870",
+    "name": "gb_inv_helmet_24"
+  },
+  "KARAZHAN|NIGHTDOOM|UNIQUE": {
+    "id": "1517492320767971362",
+    "name": "gb_inv_staff_12"
+  },
+  "GRUUL|SHOULDERS|ПРШ": {
+    "id": "1517492325654204606",
+    "name": "gb_inv_shoulder_22"
+  },
+  "GRUUL|SHOULDERS|ВЖД": {
+    "id": "1517492325654204606",
+    "name": "gb_inv_shoulder_22"
+  },
+  "GRUUL|SHOULDERS|ОРМЧ": {
+    "id": "1517492325654204606",
+    "name": "gb_inv_shoulder_22"
+  },
+  "GRUUL|LEGS|ПРШ": {
+    "id": "1517492330461008014",
+    "name": "gb_inv_pants_plate_17"
+  },
+  "GRUUL|LEGS|ВЖД": {
+    "id": "1517492330461008014",
+    "name": "gb_inv_pants_plate_17"
+  },
+  "GRUUL|LEGS|ОРМЧ": {
+    "id": "1517492330461008014",
+    "name": "gb_inv_pants_plate_17"
+  },
+  "GRUUL|HAMMER_NAARU|UNIQUE": {
+    "id": "1517492335473328259",
+    "name": "gb_inv_hammer_28"
+  },
+  "GRUUL|BLADE_DESTROYER|UNIQUE": {
+    "id": "1517492340363759819",
+    "name": "gb_inv_axe_56"
+  },
+  "GRUUL|MAULGAR_HELM|UNIQUE": {
+    "id": "1517492345338069122",
+    "name": "gb_inv_helmet_23"
+  },
+  "GRUUL|SHADOW_MASK|UNIQUE": {
+    "id": "1517492350329425920",
+    "name": "gb_inv_helmet_58"
+  },
+  "GRUUL|OGRE_CLOAK|UNIQUE": {
+    "id": "1517492355140288603",
+    "name": "gb_inv_misc_cape_16"
+  },
+  "GRUUL|STONEGRIP_BRACERS|UNIQUE": {
+    "id": "1517492359971995783",
+    "name": "gb_inv_bracer_15"
+  },
+  "GRUUL|DIVINE_BELT|UNIQUE": {
+    "id": "1517492365424595158",
+    "name": "gb_inv_belt_03"
+  },
+  "GRUUL|GRONN_AXE|UNIQUE": {
+    "id": "1517492371858784306",
+    "name": "gb_inv_axe_64"
+  },
+  "GRUUL|BLOOD_BLADE|UNIQUE": {
+    "id": "1517492376673980506",
+    "name": "gb_inv_sword_65"
+  },
+  "GRUUL|DISBELIEF|UNIQUE": {
+    "id": "1517492381493235807",
+    "name": "gb_inv_misc_ahnqirajtrinket_03"
+  },
+  "GRUUL|ALDORI_SHIELD|UNIQUE": {
+    "id": "1517492386677264644",
+    "name": "gb_inv_shield_30"
+  },
+  "GRUUL|CHOGALL_COLLAR|UNIQUE": {
+    "id": "1517492391601504377",
+    "name": "gb_inv_helmet_27"
+  },
+  "GRUUL|NATURE_HELM|UNIQUE": {
+    "id": "1517492396383015133",
+    "name": "gb_inv_helmet_15"
+  },
+  "GRUUL|GRUUL_TEETH|UNIQUE": {
+    "id": "1517492401193746574",
+    "name": "gb_inv_misc_bone_09"
+  },
+  "GRUUL|DRAGON_GLOVES|UNIQUE": {
+    "id": "1517492406105276458",
+    "name": "gb_inv_gauntlets_31"
+  },
+  "GRUUL|WAR_GLOVES|UNIQUE": {
+    "id": "1517492406105276458",
+    "name": "gb_inv_gauntlets_31"
+  },
+  "GRUUL|GRONN_BELT|UNIQUE": {
+    "id": "1517492417517981858",
+    "name": "gb_inv_belt_26"
+  },
+  "GRUUL|WINDCUTTER_BOOTS|UNIQUE": {
+    "id": "1517492422396088360",
+    "name": "gb_inv_boots_chain_05"
+  },
+  "GRUUL|GRUUL_EYE|UNIQUE": {
+    "id": "1517492427168944310",
+    "name": "gb_spell_shadow_unholyfrenzy"
+  },
+  "GRUUL|DRAGONSPINE|UNIQUE": {
+    "id": "1517492432231465072",
+    "name": "gb_inv_misc_bone_03"
+  },
+  "GRUUL|RAPTOR_AXE|UNIQUE": {
+    "id": "1517492437415891058",
+    "name": "gb_inv_axe_1h_430nightelf_c_01"
+  },
+  "MAGTHERIDON|CHEST|ПРШ": {
+    "id": "1517492442331353180",
+    "name": "gb_inv_chest_chain_03"
+  },
+  "MAGTHERIDON|CHEST|ВЖД": {
+    "id": "1517492442331353180",
+    "name": "gb_inv_chest_chain_03"
+  },
+  "MAGTHERIDON|CHEST|ОРМЧ": {
+    "id": "1517492442331353180",
+    "name": "gb_inv_chest_chain_03"
+  },
+  "MAGTHERIDON|CRYSTAL_STAFF|UNIQUE": {
+    "id": "1517492447398068224",
+    "name": "gb_inv_staff_53"
+  },
+  "MAGTHERIDON|ABYSS_GLAIVE|UNIQUE": {
+    "id": "1517492452846735380",
+    "name": "gb_inv_weapon_halberd16"
+  },
+  "MAGTHERIDON|EREDAR_WAND|UNIQUE": {
+    "id": "1517492457607004220",
+    "name": "gb_inv_wand_20"
+  },
+  "MAGTHERIDON|KARABOR_TALISMAN|UNIQUE": {
+    "id": "1517492463017656330",
+    "name": "gb_inv_offhand_draenei_a_01"
+  },
+  "MAGTHERIDON|AEGIS|UNIQUE": {
+    "id": "1517492468122259459",
+    "name": "gb_inv_shield_33"
+  },
+  "MAGTHERIDON|THUNDER_HELM|UNIQUE": {
+    "id": "1517492350329425920",
+    "name": "gb_inv_helmet_58"
+  },
+  "MAGTHERIDON|ABYSS_CLOAK|UNIQUE": {
+    "id": "1517492473277190314",
+    "name": "gb_inv_misc_cape_14"
+  },
+  "MAGTHERIDON|SOUL_EATER_BINDS|UNIQUE": {
+    "id": "1517492478092116128",
+    "name": "gb_inv_gauntlets_15"
+  },
+  "MAGTHERIDON|FORKED_TONGUE|UNIQUE": {
+    "id": "1517492483389395054",
+    "name": "gb_inv_gauntlets_19"
+  },
+  "MAGTHERIDON|NIGHTMARE_BELT|UNIQUE": {
+    "id": "1517492488636465213",
+    "name": "gb_inv_belt_20"
+  },
+  "MAGTHERIDON|VOID_BELT|UNIQUE": {
+    "id": "1517492493376028722",
+    "name": "gb_inv_belt_22"
+  },
+  "MAGTHERIDON|MAGTH_EYE|UNIQUE": {
+    "id": "1517492497817931911",
+    "name": "gb_inv_elemental_mote_life01"
+  },
+  "MAGTHERIDON|MAGTH_HEAD|UNIQUE": {
+    "id": "1517492502884647022",
+    "name": "gb_inv_misc_head_tauren_01"
+  },
+  "MAGTHERIDON|CORRUPTED_OPPRESSOR|UNIQUE": {
+    "id": "1517492507934720051",
+    "name": "gb_inv_sword_2h_cataclysm_b_02"
+  }
+}
