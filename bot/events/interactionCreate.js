@@ -139,10 +139,15 @@ module.exports = {
           data: { raidId, userId: interaction.user.id, username: interaction.user.username },
         });
 
-        const [pumpers, buyers] = await Promise.all([
-          prisma.goldRaidPumper.findMany({ where: { raidId } }),
-          prisma.goldRaidBuyer.findMany({ where: { raidId } }),
-        ]);
+        // Выдаём роль Пампер
+        try {
+          const { getWowRoles } = require('../utils/wowRoles');
+          const roles = await getWowRoles(interaction.guild);
+          const member = await interaction.guild.members.fetch(interaction.user.id);
+          if (roles.pumper && !member.roles.cache.has(roles.pumper))
+            await member.roles.add(roles.pumper);
+        } catch (e) { logger.warn(`wowRoles pumper assign: ${e.message}`); }
+
         await gbRefresh(client, { ...raid, updatedAt: new Date() }).catch(() => {});
 
         return interaction.reply({ content: '⚔️ Ты записан как **пампер**! Удачи в рейде!', ephemeral: true });
@@ -272,6 +277,16 @@ module.exports = {
         });
 
         pendingSelections.delete(`${raidId}:${interaction.user.id}`);
+
+        // Выдаём роль Баер
+        try {
+          const { getWowRoles } = require('../utils/wowRoles');
+          const roles = await getWowRoles(interaction.guild);
+          const member = await interaction.guild.members.fetch(interaction.user.id);
+          if (roles.buyer && !member.roles.cache.has(roles.buyer))
+            await member.roles.add(roles.buyer);
+        } catch (e) { logger.warn(`wowRoles buyer assign: ${e.message}`); }
+
         await gbRefresh(client, raid).catch(() => {});
 
         let msg = `💰 Записан на **${finalAdd.length}** вещ${finalAdd.length === 1 ? 'ь' : 'и'}! Персонаж: **${characterName}**`;

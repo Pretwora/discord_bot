@@ -108,6 +108,10 @@ module.exports = {
       });
     logger.info('[voice] Restored XP timers for members already in voice');
 
+    // Pre-create / cache WoW roles (Пампер, Баер, WowSirus)
+    const { getWowRoles } = require('../utils/wowRoles');
+    await getWowRoles(guild).catch(err => logger.error(`[wowRoles] setup failed: ${err.message}`));
+
     // Restore giveaway schedulers that were active before restart
     await restoreGiveaways(client);
 
