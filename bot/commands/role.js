@@ -25,8 +25,8 @@ module.exports = {
         .addRoleOption(opt => opt.setName('role').setDescription('Роль').setRequired(true))
     )
     .addSubcommand(sub =>
-      sub.setName('post-wow')
-        .setDescription('Опубликовать выбор WoW-ролей в канале #роли')
+      sub.setName('post-roles')
+        .setDescription('Опубликовать единый выбор ролей в канале #роли')
     ),
 
   async execute(interaction) {
@@ -47,20 +47,34 @@ module.exports = {
       await interaction.reply({ content: `✅ Роль ${role} снята с ${user}`, ephemeral: true });
     }
 
-    if (sub === 'post-wow') {
+    if (sub === 'post-roles') {
       await interaction.deferReply({ ephemeral: true });
+
+      const channel = interaction.guild.channels.cache.get(ROLES_CHANNEL_ID);
+      if (!channel) {
+        return interaction.editReply('❌ Канал #роли не найден.');
+      }
 
       const roles = await getWowRoles(interaction.guild);
 
       const embed = new EmbedBuilder()
-        .setTitle('🎮 WoW Роли')
-        .setColor(0x00b4d8)
+        .setTitle('🎭 Выбери свои роли')
+        .setColor(0x5865F2)
         .setDescription(
-          'Нажми кнопку чтобы получить или снять роль.\n\n' +
-          `⚔️ **Пампер** — ты водишь/качаешь рейды\n` +
-          `🌐 **WowSirus** — ты играешь на сервере Sirus\n\n` +
-          `> Роль **Баер** выдаётся автоматически при записи на покупку токена в голдбид рейде.`
-        );
+          'Нажми кнопку — роль выдаётся или снимается мгновенно.\n' +
+          'Можно взять несколько ролей сразу.\n​'
+        )
+        .addFields(
+          {
+            name: '🎮 World of Warcraft',
+            value: [
+              '⚔️ **Пампер** — ты водишь рейды и качаешь других за голд',
+              '💰 **Баер** — выдаётся **автоматически** когда записываешься на голдбид рейд',
+              '🌐 **WowSirus** — ты играешь на сервере Sirus',
+            ].join('\n'),
+          },
+        )
+        .setFooter({ text: 'Кнопки ниже — нажми чтобы взять роль' });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -73,13 +87,8 @@ module.exports = {
           .setStyle(ButtonStyle.Primary),
       );
 
-      const channel = interaction.guild.channels.cache.get(ROLES_CHANNEL_ID);
-      if (!channel) {
-        return interaction.editReply('❌ Канал #роли не найден. Проверь ROLES_CHANNEL_ID.');
-      }
-
       await channel.send({ embeds: [embed], components: [row] });
-      await interaction.editReply('✅ Сообщение опубликовано в #роли.');
+      await interaction.editReply('✅ Сообщение опубликовано в #роли. Не забудь удалить старые сообщения в канале.');
     }
   },
 };
