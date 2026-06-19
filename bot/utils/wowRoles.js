@@ -1,9 +1,9 @@
 const logger = require('../../config/logger');
 
 const ROLE_DEFS = [
-  { key: 'pumper',   name: 'Пампер',   color: 0xff6b35 },
-  { key: 'buyer',    name: 'Баер',     color: 0xffd700 },
-  { key: 'wowsirus', name: 'WowSirus', color: 0x00b4d8 },
+  { key: 'pumper',   name: 'Пампер',   color: 0xff6b35, hoist: true  },
+  { key: 'buyer',    name: 'Баер',     color: 0xffd700, hoist: false },
+  { key: 'wowsirus', name: 'WowSirus', color: 0x00b4d8, hoist: false },
 ];
 
 // guildId → { pumper: roleId, buyer: roleId, wowsirus: roleId }
@@ -15,13 +15,18 @@ async function getWowRoles(guild) {
   await guild.roles.fetch();
   const result = {};
 
-  for (const { key, name, color } of ROLE_DEFS) {
+  for (const { key, name, color, hoist } of ROLE_DEFS) {
     let role = guild.roles.cache.find(r => r.name === name);
     if (!role) {
-      role = await guild.roles.create({ name, color, reason: 'WoW roles auto-setup' });
+      role = await guild.roles.create({ name, color, hoist, reason: 'WoW roles auto-setup' });
       logger.info(`[wowRoles] Created role "${name}" (${role.id})`);
     } else {
-      logger.info(`[wowRoles] Found role "${name}" (${role.id})`);
+      if (role.hoist !== hoist) {
+        await role.setHoist(hoist, 'WoW roles hoist sync');
+        logger.info(`[wowRoles] Updated hoist for "${name}" → ${hoist}`);
+      } else {
+        logger.info(`[wowRoles] Found role "${name}" (${role.id})`);
+      }
     }
     result[key] = role.id;
   }
