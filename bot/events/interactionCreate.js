@@ -4,6 +4,7 @@ const { refreshMessage } = require('../utils/giveawayManager');
 const {
   buildRaidEmbed, buildMainRows, buildBuyerSelectRows,
   pendingSelections, parseItemValue, NOSHOW_THRESHOLD, LOOT_TABLE,
+  getAllPending, clearAllPending, getItemQty,
 } = require('../utils/gbManager');
 const { refreshMessage: gbRefresh } = require('../commands/gb');
 
@@ -173,9 +174,16 @@ module.exports = {
           return interaction.reply({ content: `🚫 Ты в чёрном списке.\nПричина: ${bl.reason ?? 'не указана'}`, ephemeral: true });
         }
 
-        const rows = buildBuyerSelectRows(raidId, raid.raidType);
+        // Загружаем цены из настроек сервера
+        let goldPrices = {};
+        try {
+          const dbGuild = await prisma.guild.findUnique({ where: { id: raid.guildId } });
+          goldPrices = JSON.parse(dbGuild?.settings || '{}').goldPrices ?? {};
+        } catch {}
+
+        const rows = buildBuyerSelectRows(raidId, raid.raidType, goldPrices);
         return interaction.reply({
-          content: '💰 **Выбери вещи которые хочешь купить**, затем нажми **✅ Записаться**.\nМожно выбрать несколько.',
+          content: '💰 **Выбери предметы** которые хочешь купить, затем нажми **✅ Записаться**.\nМожно выбрать несколько из каждого списка.',
           components: rows,
           ephemeral: true,
         });
@@ -185,19 +193,26 @@ module.exports = {
       }
     }
 
-    // ── GB: баер меняет выбор в селекте ──────────────────────────────────
-    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('gb_buyer_select_')) {
-      const raidId = interaction.customId.replace('gb_buyer_select_', '');
-      pendingSelections.set(`${raidId}:${interaction.user.id}`, interaction.values);
+    // ── GB: баер меняет выбор в любом из селектов ────────────────────────
+    // customId: gb_buyer_sel_${raidId}_${raidKey}_${subtype}
+    // raidId — UUID (содержит дефисы, не подчёркивания), поэтому split('_')[3]
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('gb_buyer_sel_')) {
+      const parts = interaction.customId.split('_');
+      // parts: ['gb','buyer','sel', raidId, raidKey, subtype]
+      const raidId  = parts[3];
+      const raidKey = parts[4];
+      const subtype = parts[5];
+      pendingSelections.set(`${raidId}:${interaction.user.id}:${raidKey}_${subtype}`, interaction.values);
       return interaction.deferUpdate();
     }
 
     // ── GB: баер нажимает "Записаться" → показываем Modal с ником ──────────
     if (interaction.isButton() && interaction.customId.startsWith('gb_buyer_register_')) {
       const raidId = interaction.customId.replace('gb_buyer_register_', '');
-      const selected = pendingSelections.get(`${raidId}:${interaction.user.id}`);
+      const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } }).catch(() => null);
+      const selected = raid ? getAllPending(raidId, interaction.user.id, raid.raidType) : [];
       if (!selected || selected.length === 0) {
-        return interaction.reply({ content: '❌ Сначала выбери вещи из списка выше.', ephemeral: true });
+        return interaction.reply({ content: '❌ Сначала выбери предметы из списков выше.', ephemeral: true });
       }
 
       const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
@@ -225,14 +240,15 @@ module.exports = {
       const raidId = interaction.customId.replace('gb_buyer_modal_', '');
       try {
         const characterName = interaction.fields.getTextInputValue('character_name').trim();
-        const selected = pendingSelections.get(`${raidId}:${interaction.user.id}`);
-        if (!selected || selected.length === 0) {
-          return interaction.reply({ content: '❌ Сессия истекла — открой меню записи заново.', ephemeral: true });
-        }
 
         const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
         if (!raid || raid.status !== 'OPEN') {
           return interaction.reply({ content: '❌ Запись в рейд закрыта.', ephemeral: true });
+        }
+
+        const selected = getAllPending(raidId, interaction.user.id, raid.raidType);
+        if (!selected || selected.length === 0) {
+          return interaction.reply({ content: '❌ Сессия истекла — открой меню записи заново.', ephemeral: true });
         }
 
         // Фильтруем: убираем уже заказанные этим юзером
@@ -240,14 +256,14 @@ module.exports = {
           where: { raidId, userId: interaction.user.id, status: 'QUEUED' },
         });
         const myKeys = new Set(myExisting.map(b => `${b.raidTarget}|${b.slot}|${b.tokenType}`));
-        let toAdd = selected.filter(v => !myKeys.has(v));
+        const toAdd = selected.filter(v => !myKeys.has(v));
 
         // Проверяем вместимость каждого слота
         const fullItems = [];
         const finalAdd = [];
         for (const v of toAdd) {
           const { raidTarget, slot, tokenType } = parseItemValue(v);
-          const qty = LOOT_TABLE[raidTarget]?.drops.find(d => d.slot === slot)?.qty ?? 1;
+          const qty = getItemQty(raidTarget, slot, tokenType);
           const count = await prisma.goldRaidBuyer.count({
             where: { raidId, raidTarget, slot, tokenType, status: 'QUEUED' },
           });
@@ -259,8 +275,8 @@ module.exports = {
         }
 
         if (finalAdd.length === 0) {
-          pendingSelections.delete(`${raidId}:${interaction.user.id}`);
-          const fullMsg = fullItems.length > 0 ? ' Все выбранные слоты уже заполнены.' : ' Ты уже стоишь в очереди на все эти вещи.';
+          clearAllPending(raidId, interaction.user.id, raid.raidType);
+          const fullMsg = fullItems.length > 0 ? ' Все выбранные предметы уже заняты.' : ' Ты уже стоишь в очереди на все эти предметы.';
           return interaction.reply({ content: `ℹ️${fullMsg}`, ephemeral: true });
         }
 
@@ -276,7 +292,7 @@ module.exports = {
           })),
         });
 
-        pendingSelections.delete(`${raidId}:${interaction.user.id}`);
+        clearAllPending(raidId, interaction.user.id, raid.raidType);
 
         // Выдаём роль Баер
         try {
@@ -302,13 +318,14 @@ module.exports = {
     if (interaction.isButton() && interaction.customId.startsWith('gb_buyer_leave_')) {
       const raidId = interaction.customId.replace('gb_buyer_leave_', '');
       try {
+        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
         const deleted = await prisma.goldRaidBuyer.deleteMany({
           where: { raidId, userId: interaction.user.id, status: 'QUEUED' },
         });
-        pendingSelections.delete(`${raidId}:${interaction.user.id}`);
-
-        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
-        if (raid) await gbRefresh(client, raid).catch(() => {});
+        if (raid) {
+          clearAllPending(raidId, interaction.user.id, raid.raidType);
+          await gbRefresh(client, raid).catch(() => {});
+        }
 
         return interaction.reply({
           content: deleted.count > 0

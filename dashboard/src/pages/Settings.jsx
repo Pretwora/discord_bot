@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Bot, Shield, Star, Save, Hash,
-  CheckCircle, AlertTriangle, RefreshCw, Sliders, BarChart2, ChevronDown
+  CheckCircle, AlertTriangle, RefreshCw, Sliders, BarChart2, ChevronDown, Sword
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -12,6 +12,7 @@ const TABS = [
   { id: 'moderation', icon: Shield,    label: 'Модерация'   },
   { id: 'reports',    icon: BarChart2, label: 'Отчёты'      },
   { id: 'bot',        icon: Bot,       label: 'Бот'         },
+  { id: 'goldbid',    icon: Sword,     label: 'Голдбид'     },
 ];
 
 function ToggleSwitch({ checked, onChange }) {
@@ -69,6 +70,123 @@ const DEFAULTS = {
   botActivityType: 'WATCHING',
   botStatus: 'online',
 };
+
+function GoldBidTab() {
+  const { data: raids = [], isLoading, refetch } = useQuery({
+    queryKey: ['gold-prices'],
+    queryFn: () => api.get('/api/v1/gold-raids/prices').then(r => r.data),
+  });
+
+  const [localPrices, setLocalPrices] = useState({});
+  const [saved, setSaved] = useState(false);
+  const [changed, setChanged] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: (prices) => api.patch('/api/v1/gold-raids/prices', { prices }),
+    onSuccess: () => {
+      setSaved(true);
+      setChanged(false);
+      setTimeout(() => setSaved(false), 2500);
+      refetch();
+    },
+  });
+
+  const handleChange = (key, val) => {
+    const num = parseInt(val, 10);
+    setLocalPrices(p => ({ ...p, [key]: isNaN(num) ? 0 : num }));
+    setChanged(true);
+  };
+
+  const getPrice = (item) => {
+    if (localPrices[item.key] !== undefined) return localPrices[item.key];
+    return item.price;
+  };
+
+  const handleSave = () => {
+    mutation.mutate(localPrices);
+  };
+
+  if (isLoading) return (
+    <div className="space-y-3">
+      {Array(8).fill(0).map((_, i) => (
+        <div key={i} className="h-10 rounded animate-pulse" style={{ backgroundColor: 'var(--discord-border)' }} />
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-sm font-medium text-white">Цены на предметы</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--discord-text-muted)' }}>
+            Отображаются баерам при выборе предметов в рейде
+          </p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={mutation.isPending || !changed}
+          className="discord-btn flex items-center gap-2 text-sm"
+          style={{
+            backgroundColor: saved ? 'var(--discord-green)' : changed ? 'var(--discord-blurple)' : 'var(--discord-border)',
+            color: 'white',
+            opacity: !changed && !saved ? 0.5 : 1,
+          }}
+        >
+          {mutation.isPending ? <RefreshCw size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
+          {saved ? 'Сохранено!' : 'Сохранить цены'}
+        </button>
+      </div>
+
+      {raids.map(raid => (
+        <div key={raid.raidKey} className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--discord-text-muted)' }}>
+            {raid.emoji} {raid.name}
+          </p>
+
+          {/* Group items by section */}
+          {Object.entries(
+            raid.items.reduce((acc, item) => {
+              if (!acc[item.section]) acc[item.section] = [];
+              acc[item.section].push(item);
+              return acc;
+            }, {})
+          ).map(([section, items]) => (
+            <div key={section} className="mb-3">
+              <p className="text-xs mb-1 px-1" style={{ color: 'var(--discord-text-muted)' }}>{section}</p>
+              {items.map(item => (
+                <div
+                  key={item.key}
+                  className="flex items-center justify-between px-3 py-2 rounded"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                >
+                  <span className="text-sm text-white">{item.label}</span>
+                  <div className="flex items-center gap-2">
+                    {getPrice(item) !== item.defaultPrice && (
+                      <span className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>
+                        (было {item.defaultPrice.toLocaleString('ru-RU')})
+                      </span>
+                    )}
+                    <input
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={getPrice(item)}
+                      onChange={e => handleChange(item.key, e.target.value)}
+                      className="discord-input text-right font-mono"
+                      style={{ width: 120 }}
+                    />
+                    <span className="text-xs w-4" style={{ color: 'var(--discord-text-muted)' }}>зл</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function ReportsTab({ form, set }) {
   const { data: channels = [] } = useQuery({
@@ -298,6 +416,10 @@ export default function Settings() {
 
           {tab === 'reports' && (
             <ReportsTab form={form} set={set} />
+          )}
+
+          {tab === 'goldbid' && (
+            <GoldBidTab />
           )}
 
           {tab === 'bot' && (
