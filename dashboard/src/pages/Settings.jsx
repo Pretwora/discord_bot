@@ -81,13 +81,24 @@ function GoldBidTab() {
   const [saved, setSaved] = useState(false);
   const [changed, setChanged] = useState(false);
 
+  const [saveError, setSaveError] = useState('');
+
   const mutation = useMutation({
     mutationFn: (prices) => api.patch('/api/v1/gold-raids/prices', { prices }),
     onSuccess: () => {
       setSaved(true);
+      setSaveError('');
       setChanged(false);
       setTimeout(() => setSaved(false), 2500);
       refetch();
+    },
+    onError: (err) => {
+      const status = err.response?.status;
+      if (status === 401) {
+        setSaveError('Сессия истекла — обнови страницу и войди заново');
+      } else {
+        setSaveError(err.response?.data?.error || 'Ошибка сохранения');
+      }
     },
   });
 
@@ -123,19 +134,24 @@ function GoldBidTab() {
             Отображаются баерам при выборе предметов в рейде
           </p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={mutation.isPending || !changed}
-          className="discord-btn flex items-center gap-2 text-sm"
-          style={{
-            backgroundColor: saved ? 'var(--discord-green)' : changed ? 'var(--discord-blurple)' : 'var(--discord-border)',
-            color: 'white',
-            opacity: !changed && !saved ? 0.5 : 1,
-          }}
-        >
-          {mutation.isPending ? <RefreshCw size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
-          {saved ? 'Сохранено!' : 'Сохранить цены'}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={handleSave}
+            disabled={mutation.isPending || !changed}
+            className="discord-btn flex items-center gap-2 text-sm"
+            style={{
+              backgroundColor: saved ? 'var(--discord-green)' : mutation.isError ? 'var(--discord-red)' : changed ? 'var(--discord-blurple)' : 'var(--discord-border)',
+              color: 'white',
+              opacity: !changed && !saved ? 0.5 : 1,
+            }}
+          >
+            {mutation.isPending ? <RefreshCw size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
+            {saved ? 'Сохранено!' : 'Сохранить цены'}
+          </button>
+          {saveError && (
+            <p className="text-xs" style={{ color: 'var(--discord-red)' }}>{saveError}</p>
+          )}
+        </div>
       </div>
 
       {raids.map(raid => (
