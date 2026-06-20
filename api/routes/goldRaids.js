@@ -178,6 +178,36 @@ router.post('/', requireAuth, async (req, res) => {
     });
     writeAuditLog({ guildId: GUILD_ID, actorId: req.user.id, action: 'GB_CREATE', meta: { raidId: raid.id, source: 'dashboard' } }).catch(() => {});
 
+    // Если указана цена за токен — применить её к настройкам голдбидов для всех token-айтемов нужных рейдов
+    if (slotPrice != null) {
+      const price = parseInt(slotPrice);
+      const { LOOT_TABLE } = require('../../config/lootTable');
+      const RAID_TYPE_KEYS = {
+        GRUUL_MAGTHERIDON: ['GRUUL', 'MAGTHERIDON'],
+        KARAZHAN: ['KARAZHAN'],
+        GRUUL: ['GRUUL'],
+        MAGTHERIDON: ['MAGTHERIDON'],
+      };
+      const raidKeys = RAID_TYPE_KEYS[raidType] ?? [];
+
+      const guild = await prisma.guild.findUnique({ where: { id: GUILD_ID } });
+      let settings = {};
+      try { settings = JSON.parse(guild?.settings || '{}'); } catch {}
+
+      const updatedPrices = { ...(settings.goldPrices ?? {}) };
+      for (const raidKey of raidKeys) {
+        const raidData = LOOT_TABLE[raidKey];
+        if (!raidData) continue;
+        for (const item of raidData.items) {
+          if (item.tokenType === 'UNIQUE') continue;
+          updatedPrices[`${raidKey}|${item.slot}|${item.tokenType}`] = price;
+        }
+      }
+
+      settings.goldPrices = updatedPrices;
+      await prisma.guild.update({ where: { id: GUILD_ID }, data: { settings: JSON.stringify(settings) } });
+    }
+
     // Просим бота запостить анонс в Discord
     req.io.emit('bot:cmd', { event: 'goldbid:create', raidId: raid.id });
 
