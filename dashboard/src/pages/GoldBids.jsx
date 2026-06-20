@@ -79,6 +79,7 @@ function CreateModal({ onClose, onCreated }) {
   const [pumpersEnabled, setPumpersEnabled] = useState(true);
   const [notes, setNotes] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [rlCharacterName, setRlCharacterName] = useState('');
   const [error, setError] = useState('');
 
   const mut = useMutation({
@@ -94,6 +95,7 @@ function CreateModal({ onClose, onCreated }) {
       slotPrice: slotPrice ? parseInt(slotPrice) : null,
       pumpersEnabled,
       notes: notes || null,
+      rlCharacterName: rlCharacterName || null,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
     });
   };
@@ -144,6 +146,15 @@ function CreateModal({ onClose, onCreated }) {
             value={scheduledAt}
             onChange={e => setScheduledAt(e.target.value)}
             style={{ colorScheme: 'dark' }}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>🗡️ Ник персонажа РЛа в игре</label>
+          <input
+            className="discord-input"
+            placeholder="Например: Fexler"
+            value={rlCharacterName}
+            onChange={e => setRlCharacterName(e.target.value)}
           />
         </div>
         <div>
@@ -211,6 +222,7 @@ function RaidDetail({ raidId, onClose }) {
   const [editScheduledAt, setEditScheduledAt] = useState('');
   const [editText, setEditText] = useState('');
   const [editPumpersEnabled, setEditPumpersEnabled] = useState(true);
+  const [editRlCharacter, setEditRlCharacter] = useState('');
 
   function startEdit() {
     setEditNotes(raid.notes ?? '');
@@ -218,6 +230,7 @@ function RaidDetail({ raidId, onClose }) {
     setEditScheduledAt(toLocalDatetimeInput(raid.scheduledAt));
     setEditText(raid.extraText ?? '');
     setEditPumpersEnabled(raid.pumpersEnabled !== false);
+    setEditRlCharacter(raid.rlCharacterName ?? '');
     setEditing(true);
   }
 
@@ -228,6 +241,7 @@ function RaidDetail({ raidId, onClose }) {
       scheduledAt: editScheduledAt ? new Date(editScheduledAt).toISOString() : null,
       extraText: editText || null,
       pumpersEnabled: editPumpersEnabled,
+      rlCharacterName: editRlCharacter || null,
     });
   }
 
@@ -254,6 +268,11 @@ function RaidDetail({ raidId, onClose }) {
           {raid.slotPrice != null && (
             <p className="text-2xl font-bold mt-1" style={{ color: 'var(--discord-yellow)' }}>
               💰 {raid.slotPrice.toLocaleString()} золота за токен
+            </p>
+          )}
+          {raid.rlCharacterName && (
+            <p className="text-sm font-medium" style={{ color: 'var(--discord-blurple)' }}>
+              🗡️ РЛ: {raid.rlCharacterName}
             </p>
           )}
           {raid.notes && <p className="text-sm" style={{ color: 'var(--discord-text-muted)' }}>{raid.notes}</p>}
@@ -287,6 +306,11 @@ function RaidDetail({ raidId, onClose }) {
               <input type="datetime-local" className="discord-input w-full text-sm" style={{ colorScheme: 'dark' }}
                 value={editScheduledAt} onChange={e => setEditScheduledAt(e.target.value)} />
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>🗡️ Ник персонажа РЛа</label>
+            <input className="discord-input w-full text-sm" placeholder="Например: Fexler"
+              value={editRlCharacter} onChange={e => setEditRlCharacter(e.target.value)} />
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase mb-1" style={{ color: 'var(--discord-text-muted)' }}>📝 Заметка</label>

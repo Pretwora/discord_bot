@@ -89,7 +89,8 @@ function buildRaidEmbed(raid, pumpers, buyers) {
   const label    = RAID_TYPES[raid.raidType]?.label ?? raid.raidType ?? '';
   const priceStr = raid.slotPrice != null ? `\n> # 💰 ${raid.slotPrice.toLocaleString()} золота за токен\n` : '';
   const extraStr = raid.extraText ? `\n${raid.extraText}\n` : '';
-  embed.setDescription(`${priceStr}${dateStr}${notesStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${label}${extraStr}`);
+  const rlStr    = `🗡️ **РЛ:** <@${raid.announcedBy}>${raid.rlCharacterName ? ` (${raid.rlCharacterName})` : ''}\n`;
+  embed.setDescription(`${priceStr}${dateStr}${notesStr}${rlStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${label}${extraStr}`);
 
   // Памперы
   if (raid.pumpersEnabled !== false) {
@@ -116,7 +117,7 @@ function buildRaidEmbed(raid, pumpers, buyers) {
       );
       const ind   = queued.length >= item.qty ? '✅' : `${queued.length}/${item.qty}`;
       const names = queued.length > 0
-        ? queued.map(b => b.characterName ? `<@${b.userId}> (${b.characterName})` : `<@${b.userId}>`).join(', ')
+        ? queued.map(b => `<@${b.userId}>`).join(', ')
         : '—';
       bySec[item.section].push(`**${item.tokenType}** (${ind}): ${names}`);
     }
@@ -135,7 +136,7 @@ function buildRaidEmbed(raid, pumpers, buyers) {
         .map(item => {
           const names = uniqueBuyers
             .filter(b => b.slot === item.slot)
-            .map(b => b.characterName ? `<@${b.userId}> (${b.characterName})` : `<@${b.userId}>`).join(', ');
+            .map(b => `<@${b.userId}>`).join(', ');
           return `🔸 **${item.label}**: ${names}`;
         });
       if (lines.length) {

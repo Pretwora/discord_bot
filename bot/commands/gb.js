@@ -65,7 +65,8 @@ module.exports = {
       )
       .addIntegerOption(o => o.setName('price').setDescription('Цена за одну вещь (золото)').setRequired(false).setMinValue(0))
       .addBooleanOption(o => o.setName('pumpers').setDescription('Набор памперов (по умолчанию: да)').setRequired(false))
-      .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false)),
+      .addStringOption(o => o.setName('notes').setDescription('Примечание (дата, время и т.д.)').setRequired(false))
+      .addStringOption(o => o.setName('rl_character').setDescription('Ник персонажа РЛа в игре (например: Fexler)').setRequired(false)),
     )
     .addSubcommand(s => s
       .setName('lock')
@@ -204,10 +205,11 @@ module.exports = {
 
     // ── create ─────────────────────────────────────────────────────────────────
     else if (sub === 'create') {
-      const raidType       = interaction.options.getString('type');
-      const slotPrice      = interaction.options.getInteger('price') ?? null;
-      const pumpersEnabled = interaction.options.getBoolean('pumpers') ?? true;
-      const notes          = interaction.options.getString('notes') ?? null;
+      const raidType        = interaction.options.getString('type');
+      const slotPrice       = interaction.options.getInteger('price') ?? null;
+      const pumpersEnabled  = interaction.options.getBoolean('pumpers') ?? true;
+      const notes           = interaction.options.getString('notes') ?? null;
+      const rlCharacterName = interaction.options.getString('rl_character') ?? null;
 
       // Определяем канал для анонса
       const gbChannelId = await getGbChannelId(guildId);
@@ -231,6 +233,7 @@ module.exports = {
           announcedBy: interaction.user.id,
           channelId: targetChannel.id,
           notes,
+          rlCharacterName,
         },
       });
 
@@ -456,6 +459,15 @@ module.exports = {
             .setStyle(TextInputStyle.Short)
             .setPlaceholder('5000')
             .setValue(raid.slotPrice != null ? String(raid.slotPrice) : '')
+            .setRequired(false),
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_rl_character')
+            .setLabel('Ник персонажа РЛа в игре')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Например: Fexler')
+            .setValue(raid.rlCharacterName ?? '')
             .setRequired(false),
         ),
         new ActionRowBuilder().addComponents(

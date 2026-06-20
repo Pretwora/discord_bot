@@ -7,6 +7,7 @@ const {
   getAllPending, clearAllPending, getItemQty,
 } = require('../utils/gbManager');
 const { refreshMessage: gbRefresh } = require('../commands/gb');
+const { notifyRL } = require('../utils/rlNotifier');
 
 const prisma = new PrismaClient();
 
@@ -150,6 +151,7 @@ module.exports = {
         } catch (e) { logger.warn(`wowRoles pumper assign: ${e.message}`); }
 
         await gbRefresh(client, { ...raid, updatedAt: new Date() }).catch(() => {});
+        notifyRL(client, raidId).catch(() => {});
 
         return interaction.reply({ content: '⚔️ Ты записан как **пампер**! Удачи в рейде!', ephemeral: true });
       } catch (err) {
@@ -304,6 +306,7 @@ module.exports = {
         } catch (e) { logger.warn(`wowRoles buyer assign: ${e.message}`); }
 
         await gbRefresh(client, raid).catch(() => {});
+        notifyRL(client, raidId).catch(() => {});
 
         let msg = `💰 Записан на **${finalAdd.length}** вещ${finalAdd.length === 1 ? 'ь' : 'и'}! Персонаж: **${characterName}**`;
         if (fullItems.length > 0) msg += `\n⚠️ ${fullItems.length} слот(а) уже заполнены — туда не попал.`;
@@ -325,6 +328,7 @@ module.exports = {
         if (raid) {
           clearAllPending(raidId, interaction.user.id, raid.raidType);
           await gbRefresh(client, raid).catch(() => {});
+          if (deleted.count > 0) notifyRL(client, raidId).catch(() => {});
         }
 
         return interaction.reply({
@@ -372,14 +376,16 @@ module.exports = {
     if (interaction.isModalSubmit() && interaction.customId.startsWith('gb_edit_modal_')) {
       const raidId = interaction.customId.replace('gb_edit_modal_', '');
       try {
-        const priceRaw = interaction.fields.getTextInputValue('edit_price').trim();
-        const notes    = interaction.fields.getTextInputValue('edit_notes').trim();
-        const extraText = interaction.fields.getTextInputValue('edit_extra').trim();
+        const priceRaw       = interaction.fields.getTextInputValue('edit_price').trim();
+        const rlCharacter    = interaction.fields.getTextInputValue('edit_rl_character').trim();
+        const notes          = interaction.fields.getTextInputValue('edit_notes').trim();
+        const extraText      = interaction.fields.getTextInputValue('edit_extra').trim();
 
         const data = { updatedAt: new Date() };
-        data.slotPrice = priceRaw ? parseInt(priceRaw) : null;
-        data.notes     = notes || null;
-        data.extraText = extraText || null;
+        data.slotPrice       = priceRaw ? parseInt(priceRaw) : null;
+        data.rlCharacterName = rlCharacter || null;
+        data.notes           = notes || null;
+        data.extraText       = extraText || null;
 
         const updated = await prisma.goldRaid.update({ where: { id: raidId }, data });
         await gbRefresh(client, updated).catch(() => {});
