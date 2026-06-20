@@ -13,7 +13,7 @@ const LOOT_TABLE = {
   MAGTHERIDON: { name: 'Логово Магтеридона', emoji: '🔥', format: 25, drops: [{ slot: 'CHEST', label: 'Нагрудник', qty: 1 }] },
   KARAZHAN:    { name: 'Каражан',            emoji: '🏰', format: 10, drops: [{ slot: 'GLOVES', label: 'Перчатки', qty: 1 }, { slot: 'HEAD', label: 'Голова', qty: 1 }] },
 };
-const TOKEN_TYPES = ['ПРШ', 'ЛХМД', 'ВЖД'];
+const TOKEN_TYPES = ['ПРШ', 'ВЖД', 'ОРМЧ'];
 
 const RAID_TYPES = {
   GRUUL_MAGTHERIDON: { label: 'Груул + Магтеридон', keys: ['GRUUL', 'MAGTHERIDON'] },

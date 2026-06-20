@@ -204,7 +204,7 @@ model GoldRaidBuyer {
   username   String
   raidTarget    String   // GRUUL | MAGTHERIDON | KARAZHAN
   slot          String   // LEGS | SHOULDERS | CHEST | GLOVES | HEAD
-  tokenType     String   // ПРШ | ЛХМД | ВЖД
+  tokenType     String   // ПРШ | ВЖД | ОРМЧ | UNIQUE
   characterName String?
   goldAmount    Int?
   status        String   @default("QUEUED") // QUEUED | WON | CANCELLED
