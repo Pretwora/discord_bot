@@ -92,12 +92,13 @@ function buildRaidEmbed(raid, pumpers, buyers) {
   const rlStr    = `🗡️ **РЛ:** <@${raid.announcedBy}>${raid.rlCharacterName ? ` (${raid.rlCharacterName})` : ''}\n`;
   embed.setDescription(`${priceStr}${dateStr}${notesStr}${rlStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${label}${extraStr}`);
 
-  // Памперы
+  // Памперы — показываем только количество, ники скрыты
   if (raid.pumpersEnabled !== false) {
-    const lines = pumpers.length > 0
-      ? pumpers.map(p => `${p.confirmed ? '✅' : '⬜'} <@${p.userId}>`).join('  ')
+    const confirmed = pumpers.filter(p => p.confirmed).length;
+    const value = pumpers.length > 0
+      ? `✅ Подтверждено: **${confirmed}** / Записано: **${pumpers.length}**`
       : '_Нет памперов — первым вставай!_';
-    embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value: lines });
+    embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value });
   }
 
   for (const raidKey of getRaidKeys(raid.raidType)) {
