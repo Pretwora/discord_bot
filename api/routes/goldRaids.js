@@ -88,6 +88,15 @@ router.patch('/prices', requireAuth, async (req, res) => {
       source: 'DASHBOARD',
     });
 
+    // Обновляем Discord embed для всех активных рейдов
+    const activeRaids = await prisma.goldRaid.findMany({
+      where: { guildId: GUILD_ID, status: { in: ['OPEN', 'LOCKED', 'IN_PROGRESS'] }, messageId: { not: null } },
+      select: { id: true },
+    });
+    for (const raid of activeRaids) {
+      req.io.emit('bot:cmd', { event: 'goldbid:refresh', raidId: raid.id });
+    }
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
