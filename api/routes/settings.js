@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 });
 
 router.patch('/', async (req, res) => {
-  const { prefix, ...rest } = req.body;
+  const { prefix, goldPrices: _gp, ...rest } = req.body;
   try {
     const guild = await prisma.guild.findUnique({ where: { id: GUILD_ID() } });
     let existing = {};
