@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { PrismaClient } = require('@prisma/client');
 const requireAuth = require('../middleware/auth');
 const { writeAuditLog } = require('../../bot/utils/auditLog');
+const logger = require('../../config/logger');
 
 const prisma = new PrismaClient();
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
@@ -93,7 +94,9 @@ router.patch('/prices', requireAuth, async (req, res) => {
       where: { guildId: GUILD_ID, status: { in: ['OPEN', 'LOCKED', 'IN_PROGRESS'] }, messageId: { not: null } },
       select: { id: true },
     });
+    logger.info(`[prices] saved ${Object.keys(prices).length} price(s), found ${activeRaids.length} active raid(s) to refresh`);
     for (const raid of activeRaids) {
+      logger.info(`[prices] emitting goldbid:refresh for raid ${raid.id}`);
       req.io.emit('bot:cmd', { event: 'goldbid:refresh', raidId: raid.id });
     }
 

@@ -149,10 +149,14 @@ module.exports = function connectDashboardSocket(client) {
       } else if (event === 'giveaway:reroll') {
         await rerollGiveaway(client, giveawayId, count ?? 1);
       } else if (event === 'goldbid:refresh') {
+        logger.info(`[socket] goldbid:refresh received for raidId=${raidId}`);
         const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
-        if (raid) {
+        if (!raid) {
+          logger.warn(`[socket] goldbid:refresh — raid ${raidId} not found`);
+        } else {
+          logger.info(`[socket] goldbid:refresh — refreshing raid ${raidId}, messageId=${raid.messageId}, channelId=${raid.channelId}`);
           const { refreshMessage: gbRefresh } = require('./commands/gb');
-          await gbRefresh(client, raid).catch(() => {});
+          await gbRefresh(client, raid).catch(err => logger.error(`[socket] goldbid:refresh failed: ${err.message}`));
         }
 
       } else if (event === 'goldbid:create') {
