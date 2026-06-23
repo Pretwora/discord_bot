@@ -17,6 +17,12 @@ function ProtectedRoute({ children }) {
   return isAuth ? children : <Navigate to="/login" replace />;
 }
 
+// Для РЛ — разрешаем только /goldbids, всё остальное редиректим туда
+function AdminOnlyRoute({ children }) {
+  const { isRL } = useAuth();
+  return isRL ? <Navigate to="/goldbids" replace /> : children;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -30,14 +36,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Overview />} />
-        <Route path="channels" element={<Channels />} />
-        <Route path="roles" element={<Roles />} />
-        <Route path="members" element={<Members />} />
-        <Route path="giveaways" element={<Giveaways />} />
-        <Route path="goldbids" element={<GoldBids />} />
-        <Route path="audit-log" element={<AuditLog />} />
-        <Route path="settings" element={<Settings />} />
+        <Route index element={<AdminOnlyRoute><Overview /></AdminOnlyRoute>} />
+        <Route path="channels"  element={<AdminOnlyRoute><Channels /></AdminOnlyRoute>} />
+        <Route path="roles"     element={<AdminOnlyRoute><Roles /></AdminOnlyRoute>} />
+        <Route path="members"   element={<AdminOnlyRoute><Members /></AdminOnlyRoute>} />
+        <Route path="giveaways" element={<AdminOnlyRoute><Giveaways /></AdminOnlyRoute>} />
+        <Route path="goldbids"  element={<GoldBids />} />
+        <Route path="audit-log" element={<AdminOnlyRoute><AuditLog /></AdminOnlyRoute>} />
+        <Route path="settings"  element={<AdminOnlyRoute><Settings /></AdminOnlyRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

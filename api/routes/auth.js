@@ -7,6 +7,7 @@ const BOT_HEADERS = () => ({ Authorization: `Bot ${process.env.DISCORD_TOKEN}` }
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const ADMIN_ROLE_NAMES = (process.env.ADMIN_ROLE_NAME || 'Управление')
   .split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
+const RL_ROLE_NAME = 'верифицирован';
 
 // Step 1 — redirect to Discord OAuth2
 router.get('/discord', (_req, res) => {
@@ -61,28 +62,35 @@ router.get('/callback', async (req, res) => {
     // Owner always gets in
     const isOwner = guild.owner_id === user.id;
 
-    if (!isOwner) {
-      // Check if user has any of the allowed admin roles
-      const rolesRes = await axios.get(`${DISCORD_API}/guilds/${GUILD_ID}/roles`, { headers: BOT_HEADERS() });
-      const allowedRoles = rolesRes.data.filter(r => ADMIN_ROLE_NAMES.includes(r.name.toLowerCase()));
-      const hasAccess = allowedRoles.some(r => member.roles.includes(r.id));
+    let hasAdminAccess = false;
+    let hasRLAccess = false;
 
-      if (!hasAccess) {
+    if (!isOwner) {
+      const rolesRes = await axios.get(`${DISCORD_API}/guilds/${GUILD_ID}/roles`, { headers: BOT_HEADERS() });
+      const adminRoles = rolesRes.data.filter(r => ADMIN_ROLE_NAMES.includes(r.name.toLowerCase()));
+      hasAdminAccess = adminRoles.some(r => member.roles.includes(r.id));
+
+      const rlRoles = rolesRes.data.filter(r => r.name.toLowerCase() === RL_ROLE_NAME);
+      hasRLAccess = rlRoles.some(r => member.roles.includes(r.id));
+
+      if (!hasAdminAccess && !hasRLAccess) {
         return res.status(403).json({ error: 'access_denied', reason: 'no_permission' });
       }
     }
     // ────────────────────────────────────────────────────────────────
 
+    const isRL = !isOwner && !hasAdminAccess && hasRLAccess;
+
     // Issue JWT
     const jwtToken = jwt.sign(
-      { id: user.id, username: user.username, avatar: user.avatar, isOwner },
+      { id: user.id, username: user.username, avatar: user.avatar, isOwner, isRL },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
     res.json({
       token: jwtToken,
-      user: { id: user.id, username: user.username, avatar: user.avatar, isOwner },
+      user: { id: user.id, username: user.username, avatar: user.avatar, isOwner, isRL },
     });
   } catch (err) {
     const status = err.response?.status;

@@ -35,7 +35,7 @@ export default function Login() {
         </a>
 
         <p className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>
-          Only server administrators can access this panel.
+          Доступ для администраторов и верифицированных РЛов.
         </p>
       </div>
     </div>

@@ -22,8 +22,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const isRL = !!user?.isRL;
+  const isAdmin = !!user && !isRL;
+
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, isAuth: !!token }}>
+    <AuthContext.Provider value={{ token, user, login, logout, isAuth: !!token, isRL, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

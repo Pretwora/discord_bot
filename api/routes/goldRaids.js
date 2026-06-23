@@ -7,12 +7,15 @@ const logger = require('../../config/logger');
 const prisma = new PrismaClient();
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 
+function isRLUser(req) { return req.user.isRL === true; }
+
 // GET /api/v1/gold-raids?status=OPEN|ALL&limit=20
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { status = 'ALL', limit = '30' } = req.query;
     const where = { guildId: GUILD_ID };
     if (status !== 'ALL') where.status = status;
+    if (isRLUser(req)) where.announcedBy = req.user.id;
 
     const raids = await prisma.goldRaid.findMany({
       where,
@@ -31,6 +34,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // GET /api/v1/gold-raids/prices — loot table with current prices
 router.get('/prices', requireAuth, async (req, res) => {
+  if (isRLUser(req)) return res.status(403).json({ error: 'Forbidden' });
   try {
     const { LOOT_TABLE } = require('../../config/lootTable');
     const guild = await prisma.guild.findUnique({ where: { id: GUILD_ID } });
@@ -64,6 +68,7 @@ router.get('/prices', requireAuth, async (req, res) => {
 
 // PATCH /api/v1/gold-raids/prices — update price overrides
 router.patch('/prices', requireAuth, async (req, res) => {
+  if (isRLUser(req)) return res.status(403).json({ error: 'Forbidden' });
   try {
     const { prices } = req.body; // { "GRUUL|GRONN_AXE|UNIQUE": 12000, ... }
     if (!prices || typeof prices !== 'object') {
@@ -122,6 +127,7 @@ router.get('/stats/leaderboard', requireAuth, async (req, res) => {
 
 // GET /api/v1/gold-raids/blacklist/all
 router.get('/blacklist/all', requireAuth, async (req, res) => {
+  if (isRLUser(req)) return res.status(403).json({ error: 'Forbidden' });
   try {
     const list = await prisma.goldRaidBlacklist.findMany({
       where: { guildId: GUILD_ID },
@@ -135,6 +141,7 @@ router.get('/blacklist/all', requireAuth, async (req, res) => {
 
 // DELETE /api/v1/gold-raids/blacklist/:userId
 router.delete('/blacklist/:userId', requireAuth, async (req, res) => {
+  if (isRLUser(req)) return res.status(403).json({ error: 'Forbidden' });
   try {
     await prisma.goldRaidBlacklist.deleteMany({
       where: { guildId: GUILD_ID, userId: req.params.userId },
@@ -157,6 +164,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       },
     });
     if (!raid) return res.status(404).json({ error: 'Рейд не найден' });
+    if (isRLUser(req) && raid.announcedBy !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     res.json(raid);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -232,6 +240,12 @@ router.post('/', requireAuth, async (req, res) => {
 // PATCH /api/v1/gold-raids/:id — update status / notes / gold
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
+    if (isRLUser(req)) {
+      const existing = await prisma.goldRaid.findUnique({ where: { id: req.params.id }, select: { announcedBy: true } });
+      if (!existing) return res.status(404).json({ error: 'Рейд не найден' });
+      if (existing.announcedBy !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const { status, notes, totalGold, scheduledAt, slotPrice, extraText, pumpersEnabled, rlCharacterName } = req.body;
     const data = { updatedAt: new Date() };
     if (status) data.status = status;
@@ -256,6 +270,12 @@ router.patch('/:id', requireAuth, async (req, res) => {
 // DELETE /api/v1/gold-raids/:id
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
+    if (isRLUser(req)) {
+      const existing = await prisma.goldRaid.findUnique({ where: { id: req.params.id }, select: { announcedBy: true } });
+      if (!existing) return res.status(404).json({ error: 'Рейд не найден' });
+      if (existing.announcedBy !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const raid = await prisma.goldRaid.update({
       where: { id: req.params.id },
       data: { status: 'CANCELLED', updatedAt: new Date() },

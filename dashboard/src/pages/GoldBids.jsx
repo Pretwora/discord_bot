@@ -5,6 +5,7 @@ import {
   Users, Coins, Ban, ShieldOff, CheckCircle2, Clock, Pencil, Save,
 } from 'lucide-react';
 import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -547,6 +548,7 @@ function Blacklist() {
 
 export default function GoldBids() {
   const qc = useQueryClient();
+  const { isRL } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedId, setSelectedId] = useState(null);
@@ -599,10 +601,10 @@ export default function GoldBids() {
       {/* Tabs */}
       <div className="flex gap-1 border-b" style={{ borderColor: 'var(--discord-border)' }}>
         {[
-          { id: 'raids',       label: 'Рейды',     icon: Swords },
-          { id: 'leaderboard', label: 'Топ памперов', icon: Trophy },
-          { id: 'blacklist',   label: 'Чёрный список', icon: Ban },
-        ].map(({ id, label, icon: Icon }) => (
+          { id: 'raids',       label: 'Рейды',           icon: Swords, rlVisible: true  },
+          { id: 'leaderboard', label: 'Топ памперов',    icon: Trophy, rlVisible: false },
+          { id: 'blacklist',   label: 'Чёрный список',   icon: Ban,    rlVisible: false },
+        ].filter(t => !isRL || t.rlVisible).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}

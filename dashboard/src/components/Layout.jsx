@@ -10,7 +10,7 @@ import { useSocket } from '../hooks/useSocket';
 import api from '../lib/api';
 import AiChat from './AiChat';
 
-const navItems = [
+const adminNavItems = [
   { to: '/',          icon: LayoutDashboard, label: 'Overview'  },
   { to: '/channels',  icon: Hash,            label: 'Channels'  },
   { to: '/roles',     icon: Shield,          label: 'Roles'     },
@@ -21,8 +21,13 @@ const navItems = [
   { to: '/settings',  icon: Settings,        label: 'Settings'  },
 ];
 
+const rlNavItems = [
+  { to: '/goldbids', icon: Swords, label: 'Мои рейды' },
+];
+
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, isRL } = useAuth();
+  const navItems = isRL ? rlNavItems : adminNavItems;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [syncing, setSyncing] = useState(false);
@@ -67,17 +72,19 @@ export default function Layout() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-white truncate">Pretwora DS</p>
-            <p className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>Admin Panel</p>
+            <p className="text-xs" style={{ color: 'var(--discord-text-muted)' }}>{isRL ? 'РЛ Панель' : 'Admin Panel'}</p>
           </div>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="p-1.5 rounded hover:bg-white/10 transition-colors flex-shrink-0"
-            style={{ color: syncing ? 'var(--discord-blurple)' : 'var(--discord-text-muted)' }}
-            title="Sync from Discord"
-          >
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-          </button>
+          {!isRL && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="p-1.5 rounded hover:bg-white/10 transition-colors flex-shrink-0"
+              style={{ color: syncing ? 'var(--discord-blurple)' : 'var(--discord-text-muted)' }}
+              title="Sync from Discord"
+            >
+              <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
