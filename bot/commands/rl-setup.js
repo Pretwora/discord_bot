@@ -22,7 +22,30 @@ module.exports = {
         type: ChannelType.GuildText,
         topic: 'Информация для рейд-лидеров — верификация, рейтинг, голдбид платформа',
         reason: 'rl-setup command',
+        permissionOverwrites: [
+          {
+            id: interaction.guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.SendMessages],
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+          },
+          {
+            id: interaction.guild.ownerId,
+            allow: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageMessages],
+          },
+        ],
       });
+    } else {
+      await channel.permissionOverwrites.set([
+        {
+          id: interaction.guild.roles.everyone.id,
+          deny: [PermissionFlagsBits.SendMessages],
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+        },
+        {
+          id: interaction.guild.ownerId,
+          allow: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageMessages],
+        },
+      ]);
     }
 
     const row = new ActionRowBuilder().addComponents(
