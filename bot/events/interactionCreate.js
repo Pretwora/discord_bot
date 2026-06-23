@@ -116,34 +116,6 @@ module.exports = {
       return;
     }
 
-    // ── Welcome role buttons ───────────────────────────────────────────────
-    if (interaction.isButton() && interaction.customId.startsWith('welcome_role_')) {
-      const roleKey = interaction.customId.replace('welcome_role_', ''); // pumper | buyer | rl
-      try {
-        if (roleKey === 'rl') {
-          return sendRlApplication(interaction);
-        }
-        const roles = await getWowRoles(interaction.guild);
-        const roleId = roles[roleKey];
-        if (!roleId) {
-          return interaction.reply({ content: '❌ Роль не найдена. Обратись к администратору.', ephemeral: true });
-        }
-        const member = interaction.member;
-        if (member.roles.cache.has(roleId)) {
-          return interaction.reply({ content: '✅ У тебя уже есть эта роль!', ephemeral: true });
-        }
-        await member.roles.add(roleId);
-        const labels = { pumper: '🛡️ Пампер', buyer: '💰 Баер' };
-        return interaction.reply({
-          content: `✅ Роль **${labels[roleKey] ?? roleKey}** выдана! Добро пожаловать.`,
-          ephemeral: true,
-        });
-      } catch (err) {
-        logger.error(`welcome_role failed: ${err.message}`);
-        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз или обратись к администратору.', ephemeral: true });
-      }
-    }
-
     // ── RL apply button (из канала #для-рл) ───────────────────────────────
     if (interaction.isButton() && interaction.customId === 'rl_apply') {
       return sendRlApplication(interaction);
@@ -159,18 +131,28 @@ module.exports = {
           return interaction.update({ content: '❌ Участник не найден на сервере.', embeds: [], components: [] });
         }
         const roles = await getWowRoles(guild);
-        const rlRoleId = roles['rl'];
-        if (rlRoleId) await member.roles.add(rlRoleId);
+        const verifiedRoleId = roles['verified'];
+        if (verifiedRoleId) await member.roles.add(verifiedRoleId);
         await member.send({
           embeds: [{
             color: 0x57f287,
-            title: '✅ Заявка одобрена!',
-            description: 'Ты верифицирован как Рейд-лидер на **Pretwora DS**.\n\nИспользуй `/gb` чтобы объявить первый голдбид — баеры увидят его сразу.',
+            title: '✅ Ты верифицирован как Рейд-лидер!',
+            description: 'Добро пожаловать в команду верифицированных РЛов **Pretwora DS**.\n\nТебе теперь доступны команды для создания и управления голдбид рейдами:',
+            fields: [
+              { name: '`/gb create`', value: 'Создать анонс голдбид рейда', inline: false },
+              { name: '`/gb edit`', value: 'Редактировать анонс рейда (цена, заметки, ник персонажа)', inline: false },
+              { name: '`/gb lock`', value: 'Закрыть запись — рейд начинается', inline: false },
+              { name: '`/gb rollcall`', value: 'Отправить перекличку всем участникам', inline: false },
+              { name: '`/gb complete`', value: 'Завершить рейд и распределить голду между памперами', inline: false },
+              { name: '`/gb cancel`', value: 'Отменить рейд', inline: false },
+              { name: '`/gb noshow`', value: 'Отметить участника как не явившегося (влияет на чёрный список)', inline: false },
+              { name: '`/gb stats`', value: 'Посмотреть статистику пампера', inline: false },
+            ],
             footer: { text: 'Pretwora DS · Голдбид платформа' },
           }],
         }).catch(() => {});
         return interaction.update({
-          content: `✅ Одобрено. Роль РЛ выдана <@${applicantId}>.`,
+          content: `✅ Одобрено. Роль **Верифицирован** выдана <@${applicantId}>.`,
           embeds: [],
           components: [],
         });
@@ -190,7 +172,7 @@ module.exports = {
             embeds: [{
               color: 0xed4245,
               title: '❌ Заявка отклонена',
-              description: 'К сожалению, твоя заявка на роль РЛ была отклонена администратором.\n\nЕсли считаешь что это ошибка — напиши напрямую.',
+              description: 'К сожалению, твоя заявка на верификацию РЛ была отклонена.\n\nЕсли считаешь что это ошибка — напиши администратору напрямую.',
               footer: { text: 'Pretwora DS · Голдбид платформа' },
             }],
           }).catch(() => {});
@@ -656,10 +638,19 @@ async function sendRlApplication(interaction) {
     const applicant = interaction.user;
     const member = interaction.member;
 
-    // Проверка повторной заявки через роль
     const roles = await getWowRoles(guild);
-    if (roles['rl'] && member.roles.cache.has(roles['rl'])) {
-      return interaction.reply({ content: '✅ У тебя уже есть роль РЛ!', ephemeral: true });
+
+    // Уже верифицирован
+    if (roles['verified'] && member.roles.cache.has(roles['verified'])) {
+      return interaction.reply({ content: '✅ Ты уже верифицированный РЛ!', ephemeral: true });
+    }
+
+    // Нет роли РЛ — значит не заявлял себя как РЛ через онбординг
+    if (roles['rl'] && !member.roles.cache.has(roles['rl'])) {
+      return interaction.reply({
+        ephemeral: true,
+        content: '❌ Заявка доступна только для участников с ролью **РЛ**.\n\nЕсли ты рейд-лидер — выбери роль РЛ при входе на сервер (онбординг) или обратись к администратору.',
+      });
     }
 
     const owner = await guild.fetchOwner();

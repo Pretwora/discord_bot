@@ -4,7 +4,8 @@ const ROLE_DEFS = [
   { key: 'pumper',   name: 'Пампер',   color: 0xff6b35, hoist: true  },
   { key: 'buyer',    name: 'Баер',     color: 0xffd700, hoist: false },
   { key: 'wowsirus', name: 'WowSirus', color: 0x00b4d8, hoist: false },
-  { key: 'rl',       name: 'РЛ',       color: 0x5865f2, hoist: true  },
+  { key: 'rl',            name: 'РЛ',           color: 0x5865f2, hoist: true  },
+  { key: 'verified',      name: 'Верифицирован', color: 0x57f287, hoist: false },
 ];
 
 // guildId → { pumper: roleId, buyer: roleId, wowsirus: roleId }

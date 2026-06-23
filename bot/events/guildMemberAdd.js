@@ -1,4 +1,3 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const prisma = require('../../config/database');
 const logger  = require('../../config/logger');
 const { writeAuditLog } = require('../utils/auditLog');
@@ -24,23 +23,6 @@ module.exports = {
       const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
       if (channel) {
         const memberCount = member.guild.memberCount;
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('welcome_role_pumper')
-            .setLabel('Пампер')
-            .setEmoji('🛡️')
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId('welcome_role_buyer')
-            .setLabel('Баер')
-            .setEmoji('💰')
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId('welcome_role_rl')
-            .setLabel('РЛ')
-            .setEmoji('⚔️')
-            .setStyle(ButtonStyle.Primary),
-        );
         await channel.send({
           content: `${member}`,
           embeds: [{
@@ -54,12 +36,7 @@ module.exports = {
                 inline: false,
               },
               {
-                name: '🎭 Шаг 2 — Кто ты?',
-                value: '**🛡️ Пампер** — качаешь/дамажишь/танчишь/хилишь за голду в чужих рейдах\n**💰 Баер** — покупаешь шмот у РЛов за голду\n**⚔️ РЛ** — сам организуешь и водишь рейды\n\nНажми кнопку ниже — получишь роль и всю нужную инфу.',
-                inline: false,
-              },
-              {
-                name: '⭐ Шаг 3 — Общайся и расти',
+                name: '⭐ Шаг 2 — Общайся и расти',
                 value: 'Зарабатывай XP за сообщения и войс — открывай привилегированные каналы и поднимайся в топе сервера.',
                 inline: false,
               },
@@ -68,7 +45,6 @@ module.exports = {
             footer: { text: 'Pretwora DS • Рады видеть тебя здесь!' },
             timestamp: new Date().toISOString(),
           }],
-          components: [row],
         });
       }
     } catch (err) {

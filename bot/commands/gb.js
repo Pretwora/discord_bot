@@ -2,6 +2,9 @@ const { SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('disco
 const { PrismaClient } = require('@prisma/client');
 const { buildRaidEmbed, buildMainRows } = require('../utils/gbManager');
 const { writeAuditLog } = require('../utils/auditLog');
+const { getWowRoles } = require('../utils/wowRoles');
+
+const ADMIN_ONLY_SUBS = ['setup', 'unblacklist'];
 
 const prisma = new PrismaClient();
 
@@ -124,10 +127,29 @@ module.exports = {
   async execute(interaction, client) {
     const sub = interaction.options.getSubcommand();
     const guildId = interaction.guildId;
-    const isAdmin = sub !== 'stats';
+    const isAdminSub = ADMIN_ONLY_SUBS.includes(sub);
+    const isPublicSub = sub === 'stats';
+    const isAdmin = interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild);
 
-    if (isAdmin && !interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild)) {
-      return interaction.reply({ content: '❌ Нужны права `Manage Guild`.', ephemeral: true });
+    if (!isPublicSub) {
+      if (isAdminSub && !isAdmin) {
+        return interaction.reply({ content: '❌ Нужны права администратора.', ephemeral: true });
+      }
+      if (!isAdminSub && !isAdmin) {
+        const roles = await getWowRoles(interaction.guild);
+        const verifiedRoleId = roles['verified'];
+        if (!verifiedRoleId || !interaction.member.roles.cache.has(verifiedRoleId)) {
+          return interaction.reply({
+            ephemeral: true,
+            embeds: [{
+              color: 0xed4245,
+              title: '🔒 Доступ закрыт',
+              description: 'Команды голдбида доступны только **верифицированным РЛам**.\n\nЕсли ты рейд-лидер — зайди в канал <#для-рл> и подай заявку на верификацию.',
+              footer: { text: 'Pretwora DS · Голдбид платформа' },
+            }],
+          });
+        }
+      }
     }
 
     // ── setup ──────────────────────────────────────────────────────────────────
