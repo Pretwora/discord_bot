@@ -15,6 +15,21 @@ const LOOT_TABLE = Object.fromEntries(
 
 const NOSHOW_THRESHOLD = 3;
 
+// Составы памперов по типу рейда
+const RAID_COMPOSITION = {
+  KARAZHAN:          { TANK: 1, HEALER: 2, DPS: 7 },
+  GRUUL:             { TANK: 4, HEALER: 4, DPS: 17 },
+  MAGTHERIDON:       { TANK: 1, HEALER: 4, DPS: 20 },
+  GRUUL_MAGTHERIDON: { TANK: 1, OFFTANK: 3, HEALER: 4, DPS: 17 },
+};
+
+const ROLE_LABELS = {
+  TANK:    '🛡️ Танк',
+  OFFTANK: '🛡️ Оффтанк (ДД оффспек)',
+  HEALER:  '💚 Хил',
+  DPS:     '⚔️ ДД/РДД',
+};
+
 const RAID_TYPES = {
   KARAZHAN:          { label: 'Каражан',            keys: ['KARAZHAN'] },
   GRUUL:             { label: 'Логово Груула',       keys: ['GRUUL'] },
@@ -92,13 +107,40 @@ function buildRaidEmbed(raid, pumpers, buyers) {
   const rlStr    = `🗡️ **РЛ:** <@${raid.announcedBy}>${raid.rlCharacterName ? ` (${raid.rlCharacterName})` : ''}\n`;
   embed.setDescription(`${priceStr}${dateStr}${notesStr}${rlStr}**Статус:** ${STATUS_LABELS[raid.status] ?? raid.status}\n**Рейд:** ${label}${extraStr}`);
 
-  // Памперы — показываем только количество, ники скрыты
+  // Памперы — показываем состав по ролям, ники скрыты
   if (raid.pumpersEnabled !== false) {
-    const confirmed = pumpers.filter(p => p.confirmed).length;
-    const value = pumpers.length > 0
-      ? `✅ Подтверждено: **${confirmed}** / Записано: **${pumpers.length}**`
-      : '_Нет памперов — первым вставай!_';
-    embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value });
+    const comp = RAID_COMPOSITION[raid.raidType];
+    const activePumpers = pumpers.filter(p => !p.inQueue);
+    const queuePumpers  = pumpers.filter(p => p.inQueue);
+
+    if (comp) {
+      const totalSlots = Object.values(comp).reduce((a, b) => a + b, 0);
+      const confirmed  = activePumpers.filter(p => p.confirmed).length;
+
+      const lines = Object.entries(comp).map(([role, max]) => {
+        const filled = activePumpers.filter(p => p.pumperRole === role).length;
+        const q      = queuePumpers.filter(p => p.pumperRole === role).length;
+        const bar    = filled >= max ? '✅' : `${filled}/${max}`;
+        const qStr   = q > 0 ? ` _(очередь: ${q})_` : '';
+        return `${ROLE_LABELS[role]}: **${bar}**${qStr}`;
+      });
+
+      const legacy = activePumpers.filter(p => !p.pumperRole).length;
+      if (legacy > 0) lines.push(`❓ Без роли: ${legacy}`);
+      if (activePumpers.length > 0) lines.push(`\n✅ Подтверждено: **${confirmed}**`);
+
+      const queueInfo = queuePumpers.length > 0 ? ` · очередь: ${queuePumpers.length}` : '';
+      embed.addFields({
+        name:  `⚔️ Памперы [${activePumpers.length}/${totalSlots}${queueInfo}]`,
+        value: lines.join('\n') || '_Нет памперов — первым вставай!_',
+      });
+    } else {
+      const confirmed = pumpers.filter(p => p.confirmed).length;
+      const value = pumpers.length > 0
+        ? `✅ Подтверждено: **${confirmed}** / Записано: **${pumpers.length}**`
+        : '_Нет памперов — первым вставай!_';
+      embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value });
+    }
   }
 
   for (const raidKey of getRaidKeys(raid.raidType)) {
@@ -173,6 +215,38 @@ function buildMainRows(raidId, status, pumpersEnabled = true) {
   return [new ActionRowBuilder().addComponents(...btns)];
 }
 
+// ── Pumper role select rows ────────────────────────────────────────────────
+function buildPumperRoleRows(raidId, raidType, pumpers) {
+  const comp = RAID_COMPOSITION[raidType];
+  if (!comp) return [];
+
+  const activePumpers = pumpers.filter(p => !p.inQueue);
+  const queuePumpers  = pumpers.filter(p => p.inQueue);
+
+  const options = Object.entries(comp).map(([role, max]) => {
+    const filled = activePumpers.filter(p => p.pumperRole === role).length;
+    const q      = queuePumpers.filter(p => p.pumperRole === role).length;
+    const qStr = q > 0 ? ` · очередь: ${q}` : '';
+    const description = `${filled}/${max}${qStr}`;
+    return { label: ROLE_LABELS[role], description, value: role };
+  });
+
+  return [
+    new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(`gb_pumper_role_${raidId}`)
+        .setPlaceholder('Выбери свою роль')
+        .addOptions(options),
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`gb_pumper_leave_${raidId}`)
+        .setLabel('❌ Отменить мою запись')
+        .setStyle(ButtonStyle.Danger),
+    ),
+  ];
+}
+
 // ── Buyer select rows ──────────────────────────────────────────────────────
 // CustomId: `gb_buyer_sel_${raidId}_${raidKey}_${subtype}`
 // subtype: 'all' (≤25 items combined), 'tok' (tokens), 'unq' (uniques)
@@ -245,9 +319,9 @@ function buildBuyerSelectRows(raidId, raidType = 'GRUUL_MAGTHERIDON', goldPrices
 }
 
 module.exports = {
-  LOOT_TABLE, RAID_TYPES, NOSHOW_THRESHOLD,
+  LOOT_TABLE, RAID_TYPES, RAID_COMPOSITION, ROLE_LABELS, NOSHOW_THRESHOLD,
   pendingSelections, getAllPending, clearAllPending,
   getItemQty, getItemPrice, fmtPrice,
-  buildRaidEmbed, buildMainRows, buildBuyerSelectRows, parseItemValue,
+  buildRaidEmbed, buildMainRows, buildPumperRoleRows, buildBuyerSelectRows, parseItemValue,
   getRaidKeys,
 };

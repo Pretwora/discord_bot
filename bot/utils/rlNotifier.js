@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { PrismaClient } = require('@prisma/client');
-const { RAID_TYPES } = require('./gbManager');
+const { RAID_TYPES, ROLE_LABELS } = require('./gbManager');
 const logger = require('../../config/logger');
 
 const prisma = new PrismaClient();
@@ -23,11 +23,24 @@ async function notifyRL(client, raidId) {
     .setColor(0x5865F2)
     .setTimestamp();
 
-  // Памперы
-  const pumperLines = pumpers.length > 0
-    ? pumpers.map(p => `• <@${p.userId}> (${p.username})`).join('\n')
+  // Памперы (активные + очередь)
+  const activePumpers = pumpers.filter(p => !p.inQueue);
+  const queuePumpers  = pumpers.filter(p => p.inQueue);
+  const pumperLines = activePumpers.length > 0
+    ? activePumpers.map(p => {
+        const role = p.pumperRole ? ` [${ROLE_LABELS[p.pumperRole] ?? p.pumperRole}]` : '';
+        return `• <@${p.userId}> (${p.username})${role}`;
+      }).join('\n')
     : '_Нет памперов_';
-  embed.addFields({ name: `⚔️ Памперы [${pumpers.length}]`, value: pumperLines });
+  embed.addFields({ name: `⚔️ Памперы [${activePumpers.length}]`, value: pumperLines });
+
+  if (queuePumpers.length > 0) {
+    const queueLines = queuePumpers.map(p => {
+      const role = p.pumperRole ? ` [${ROLE_LABELS[p.pumperRole] ?? p.pumperRole}]` : '';
+      return `• <@${p.userId}> (${p.username})${role}`;
+    }).join('\n');
+    embed.addFields({ name: `⏳ Очередь [${queuePumpers.length}]`, value: queueLines });
+  }
 
   // Баеры — группируем по userId
   if (buyers.length > 0) {
