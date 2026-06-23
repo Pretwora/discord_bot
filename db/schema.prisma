@@ -183,14 +183,16 @@ model GoldRaid {
 }
 
 model GoldRaidPumper {
-  id         String   @id @default(uuid())
-  raidId     String
-  userId     String
-  username   String
-  confirmed  Boolean  @default(false)
-  noShow     Boolean  @default(false)
-  earnedGold Int?
-  joinedAt   DateTime @default(now())
+  id          String   @id @default(uuid())
+  raidId      String
+  userId      String
+  username    String
+  pumperRole  String?  // TANK | OFFTANK | HEALER | DPS
+  inQueue     Boolean  @default(false)
+  confirmed   Boolean  @default(false)
+  noShow      Boolean  @default(false)
+  earnedGold  Int?
+  joinedAt    DateTime @default(now())
 
   raid GoldRaid @relation(fields: [raidId], references: [id], onDelete: Cascade)
 
