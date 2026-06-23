@@ -60,35 +60,56 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('🎭 Выбери свои роли')
         .setColor(0x5865F2)
-        .setDescription(
-          'Нажми кнопку — роль выдаётся или снимается мгновенно.\n' +
-          'Можно взять несколько ролей сразу.\n​'
-        )
+        .setDescription('Нажми кнопку — роль выдаётся или снимается мгновенно. Можно взять несколько.\n​')
         .addFields(
           {
-            name: '🎮 World of Warcraft',
-            value: [
-              '⚔️ **Пампер** — ты водишь рейды и качаешь других за голд',
-              '💰 **Баер** — выдаётся **автоматически** когда записываешься на голдбид рейд',
-              '🌐 **WowSirus** — ты играешь на сервере Sirus',
-            ].join('\n'),
+            name: '⚔️ Пампер',
+            value: 'Участвуешь в голдбид рейдах как дамагер, танк или хил — и получаешь голду за работу.',
+            inline: false,
+          },
+          {
+            name: '💰 Баер',
+            value: 'Покупаешь шмот у РЛов за голду. Роль также выдаётся автоматически при записи на голдбид.',
+            inline: false,
+          },
+          {
+            name: '🌐 WowSirus',
+            value: 'Играешь на сервере Sirus.su.',
+            inline: false,
+          },
+          {
+            name: '⚔️ РЛ',
+            value: 'Сам организуешь и водишь голдбид рейды. После получения роли зайди в канал <#для-рл> и подай заявку на верификацию — это откроет доступ к командам создания рейдов.',
+            inline: false,
           },
         )
-        .setFooter({ text: 'Кнопки ниже — нажми чтобы взять роль' });
+        .setFooter({ text: 'Pretwora DS · Роли сервера' });
 
-      const row = new ActionRowBuilder().addComponents(
+      const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`role_toggle_${roles.pumper}`)
-          .setLabel('⚔️ Пампер')
+          .setLabel('Пампер')
+          .setEmoji('⚔️')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(`role_toggle_${roles.buyer}`)
+          .setLabel('Баер')
+          .setEmoji('💰')
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
           .setCustomId(`role_toggle_${roles.wowsirus}`)
-          .setLabel('🌐 WowSirus')
+          .setLabel('WowSirus')
+          .setEmoji('🌐')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(`role_toggle_${roles.rl}`)
+          .setLabel('РЛ')
+          .setEmoji('🗡️')
           .setStyle(ButtonStyle.Primary),
       );
 
-      await channel.send({ embeds: [embed], components: [row] });
-      await interaction.editReply('✅ Сообщение опубликовано в #роли. Не забудь удалить старые сообщения в канале.');
+      await channel.send({ embeds: [embed], components: [row1] });
+      await interaction.editReply('✅ Сообщение опубликовано в #роли. Удали старые сообщения в канале.');
     }
   },
 };
