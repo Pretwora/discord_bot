@@ -1,13 +1,15 @@
 const logger = require('../../config/logger');
 const { PrismaClient } = require('@prisma/client');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { refreshMessage } = require('../utils/giveawayManager');
 const {
-  buildRaidEmbed, buildMainRows, buildBuyerSelectRows,
-  pendingSelections, parseItemValue, NOSHOW_THRESHOLD, LOOT_TABLE,
+  buildRaidEmbed, buildMainRows, buildBuyerSelectRows, buildPumperRoleRows,
+  pendingSelections, parseItemValue, NOSHOW_THRESHOLD, LOOT_TABLE, RAID_COMPOSITION, ROLE_LABELS,
   getAllPending, clearAllPending, getItemQty,
 } = require('../utils/gbManager');
 const { refreshMessage: gbRefresh } = require('../commands/gb');
 const { notifyRL } = require('../utils/rlNotifier');
+const { getWowRoles } = require('../utils/wowRoles');
 
 const prisma = new PrismaClient();
 
@@ -114,7 +116,97 @@ module.exports = {
       return;
     }
 
-    // ── GB: пампер записывается ───────────────────────────────────────────
+    // ── Welcome role buttons ───────────────────────────────────────────────
+    if (interaction.isButton() && interaction.customId.startsWith('welcome_role_')) {
+      const roleKey = interaction.customId.replace('welcome_role_', ''); // pumper | buyer | rl
+      try {
+        if (roleKey === 'rl') {
+          return sendRlApplication(interaction);
+        }
+        const roles = await getWowRoles(interaction.guild);
+        const roleId = roles[roleKey];
+        if (!roleId) {
+          return interaction.reply({ content: '❌ Роль не найдена. Обратись к администратору.', ephemeral: true });
+        }
+        const member = interaction.member;
+        if (member.roles.cache.has(roleId)) {
+          return interaction.reply({ content: '✅ У тебя уже есть эта роль!', ephemeral: true });
+        }
+        await member.roles.add(roleId);
+        const labels = { pumper: '🛡️ Пампер', buyer: '💰 Баер' };
+        return interaction.reply({
+          content: `✅ Роль **${labels[roleKey] ?? roleKey}** выдана! Добро пожаловать.`,
+          ephemeral: true,
+        });
+      } catch (err) {
+        logger.error(`welcome_role failed: ${err.message}`);
+        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз или обратись к администратору.', ephemeral: true });
+      }
+    }
+
+    // ── RL apply button (из канала #для-рл) ───────────────────────────────
+    if (interaction.isButton() && interaction.customId === 'rl_apply') {
+      return sendRlApplication(interaction);
+    }
+
+    // ── RL approve / reject (приходит в ЛС владельцу) ─────────────────────
+    if (interaction.isButton() && interaction.customId.startsWith('rl_approve_')) {
+      const applicantId = interaction.customId.replace('rl_approve_', '');
+      try {
+        const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
+        const member = await guild.members.fetch(applicantId).catch(() => null);
+        if (!member) {
+          return interaction.update({ content: '❌ Участник не найден на сервере.', embeds: [], components: [] });
+        }
+        const roles = await getWowRoles(guild);
+        const rlRoleId = roles['rl'];
+        if (rlRoleId) await member.roles.add(rlRoleId);
+        await member.send({
+          embeds: [{
+            color: 0x57f287,
+            title: '✅ Заявка одобрена!',
+            description: 'Ты верифицирован как Рейд-лидер на **Pretwora DS**.\n\nИспользуй `/gb` чтобы объявить первый голдбид — баеры увидят его сразу.',
+            footer: { text: 'Pretwora DS · Голдбид платформа' },
+          }],
+        }).catch(() => {});
+        return interaction.update({
+          content: `✅ Одобрено. Роль РЛ выдана <@${applicantId}>.`,
+          embeds: [],
+          components: [],
+        });
+      } catch (err) {
+        logger.error(`rl_approve failed: ${err.message}`);
+        return interaction.update({ content: '❌ Ошибка при выдаче роли.', embeds: [], components: [] });
+      }
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('rl_reject_')) {
+      const applicantId = interaction.customId.replace('rl_reject_', '');
+      try {
+        const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
+        const member = await guild.members.fetch(applicantId).catch(() => null);
+        if (member) {
+          await member.send({
+            embeds: [{
+              color: 0xed4245,
+              title: '❌ Заявка отклонена',
+              description: 'К сожалению, твоя заявка на роль РЛ была отклонена администратором.\n\nЕсли считаешь что это ошибка — напиши напрямую.',
+              footer: { text: 'Pretwora DS · Голдбид платформа' },
+            }],
+          }).catch(() => {});
+        }
+        return interaction.update({
+          content: `❌ Заявка <@${applicantId}> отклонена.`,
+          embeds: [],
+          components: [],
+        });
+      } catch (err) {
+        logger.error(`rl_reject failed: ${err.message}`);
+        return interaction.update({ content: '❌ Ошибка.', embeds: [], components: [] });
+      }
+    }
+
+    // ── GB: пампер открывает меню выбора роли ────────────────────────────
     if (interaction.isButton() && interaction.customId.startsWith('gb_pumper_join_')) {
       const raidId = interaction.customId.replace('gb_pumper_join_', '');
       try {
@@ -130,33 +222,176 @@ module.exports = {
           return interaction.reply({ content: `🚫 Ты в чёрном списке.\nПричина: ${bl.reason ?? 'не указана'}`, ephemeral: true });
         }
 
-        const existing = await prisma.goldRaidPumper.findUnique({
-          where: { raidId_userId: { raidId, userId: interaction.user.id } },
-        });
+        const pumpers = await prisma.goldRaidPumper.findMany({ where: { raidId } });
+        const existing = pumpers.find(p => p.userId === interaction.user.id);
+
         if (existing) {
-          return interaction.reply({ content: '✅ Ты уже записан как пампер!', ephemeral: true });
+          const comp = RAID_COMPOSITION[raid.raidType] ?? {};
+          const roleName = existing.pumperRole ? (ROLE_LABELS[existing.pumperRole] ?? existing.pumperRole) : 'без роли';
+          const statusLine = existing.inQueue
+            ? `⏳ Ты **в очереди** на роль ${roleName}.`
+            : `⚔️ Ты в составе рейда как ${roleName}.`;
+
+          const slotsLines = Object.entries(comp).map(([role, max]) => {
+            const filled = pumpers.filter(p => !p.inQueue && p.pumperRole === role).length;
+            const q      = pumpers.filter(p => p.inQueue  && p.pumperRole === role).length;
+            const qStr   = q > 0 ? ` _(очередь: ${q})_` : '';
+            return `${ROLE_LABELS[role]}: **${filled}/${max}**${qStr}`;
+          }).join('\n');
+
+          const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+          return interaction.reply({
+            content: `${statusLine}\n\n${slotsLines}`,
+            components: [new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`gb_pumper_leave_${raidId}`)
+                .setLabel('❌ Отменить мою запись')
+                .setStyle(ButtonStyle.Danger),
+            )],
+            ephemeral: true,
+          });
         }
 
+        // Не зарегистрирован — показываем выбор роли
+        const rows = buildPumperRoleRows(raidId, raid.raidType, pumpers);
+        if (!rows.length) {
+          return interaction.reply({ content: '⚠️ Для этого типа рейда состав не настроен.', ephemeral: true });
+        }
+
+        const comp = RAID_COMPOSITION[raid.raidType] ?? {};
+        const slotsHeader = Object.entries(comp).map(([role, max]) => {
+          const filled = pumpers.filter(p => !p.inQueue && p.pumperRole === role).length;
+          const q      = pumpers.filter(p => p.inQueue  && p.pumperRole === role).length;
+          const qStr   = q > 0 ? ` · очередь: ${q}` : '';
+          return `${ROLE_LABELS[role]}: ${filled}/${max}${qStr}`;
+        }).join('\n');
+
+        return interaction.reply({
+          content: `⚔️ **Выбери свою роль в рейде:**\n\n${slotsHeader}\n\nЕсли места на твою роль кончились — попадёшь в очередь автоматически.`,
+          components: rows,
+          ephemeral: true,
+        });
+      } catch (err) {
+        logger.error(`gb_pumper_join failed: ${err.message}`);
+        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
+      }
+    }
+
+    // ── GB: пампер выбирает роль ──────────────────────────────────────────
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('gb_pumper_role_')) {
+      const raidId = interaction.customId.replace('gb_pumper_role_', '');
+      const role   = interaction.values[0];
+      try {
+        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
+        if (!raid || raid.status !== 'OPEN') {
+          return interaction.update({ content: '❌ Запись в рейд закрыта.', components: [] });
+        }
+
+        const bl = await prisma.goldRaidBlacklist.findUnique({
+          where: { guildId_userId: { guildId: raid.guildId, userId: interaction.user.id } },
+        });
+        if (bl) {
+          return interaction.update({ content: `🚫 Ты в чёрном списке.\nПричина: ${bl.reason ?? 'не указана'}`, components: [] });
+        }
+
+        const alreadyIn = await prisma.goldRaidPumper.findUnique({
+          where: { raidId_userId: { raidId, userId: interaction.user.id } },
+        });
+        if (alreadyIn) {
+          return interaction.update({ content: '✅ Ты уже записан!', components: [] });
+        }
+
+        const comp = RAID_COMPOSITION[raid.raidType] ?? {};
+        const max  = comp[role] ?? 0;
+        const filledCount = await prisma.goldRaidPumper.count({
+          where: { raidId, pumperRole: role, inQueue: false },
+        });
+        const inQueue = filledCount >= max;
+
         await prisma.goldRaidPumper.create({
-          data: { raidId, userId: interaction.user.id, username: interaction.user.username },
+          data: { raidId, userId: interaction.user.id, username: interaction.user.username, pumperRole: role, inQueue },
         });
 
-        // Выдаём роль Пампер
-        try {
-          const { getWowRoles } = require('../utils/wowRoles');
-          const roles = await getWowRoles(interaction.guild);
-          const member = await interaction.guild.members.fetch(interaction.user.id);
-          if (roles.pumper && !member.roles.cache.has(roles.pumper))
-            await member.roles.add(roles.pumper);
-        } catch (e) { logger.warn(`wowRoles pumper assign: ${e.message}`); }
+        if (!inQueue) {
+          try {
+            const { getWowRoles } = require('../utils/wowRoles');
+            const roles = await getWowRoles(interaction.guild);
+            const member = await interaction.guild.members.fetch(interaction.user.id);
+            if (roles.pumper && !member.roles.cache.has(roles.pumper))
+              await member.roles.add(roles.pumper);
+          } catch (e) { logger.warn(`wowRoles pumper assign: ${e.message}`); }
+        }
 
         await gbRefresh(client, { ...raid, updatedAt: new Date() }).catch(() => {});
         notifyRL(client, raidId).catch(() => {});
 
-        return interaction.reply({ content: '⚔️ Ты записан как **пампер**! Удачи в рейде!', ephemeral: true });
+        const roleName = ROLE_LABELS[role] ?? role;
+        const resultMsg = inQueue
+          ? `⏳ Мест на **${roleName}** нет — ты добавлен в **очередь**. Получишь уведомление, когда место освободится.`
+          : `⚔️ Записан в рейд как **${roleName}**! Удачи!`;
+
+        return interaction.update({ content: resultMsg, components: [] });
       } catch (err) {
-        logger.error(`gb_pumper_join failed: ${err.message}`);
-        return interaction.reply({ content: '❌ Ошибка. Попробуй ещё раз.', ephemeral: true });
+        logger.error(`gb_pumper_role failed: ${err.message}`);
+        return interaction.update({ content: '❌ Ошибка. Попробуй ещё раз.', components: [] });
+      }
+    }
+
+    // ── GB: пампер отменяет запись ────────────────────────────────────────
+    if (interaction.isButton() && interaction.customId.startsWith('gb_pumper_leave_')) {
+      const raidId = interaction.customId.replace('gb_pumper_leave_', '');
+      try {
+        const pumper = await prisma.goldRaidPumper.findUnique({
+          where: { raidId_userId: { raidId, userId: interaction.user.id } },
+        });
+        if (!pumper) {
+          return interaction.update({ content: 'ℹ️ Ты не записан как пампер в этот рейд.', components: [] });
+        }
+
+        const wasActive = !pumper.inQueue;
+        const role = pumper.pumperRole;
+
+        await prisma.goldRaidPumper.delete({
+          where: { raidId_userId: { raidId, userId: interaction.user.id } },
+        });
+
+        // Если уходит активный участник — продвигаем первого из очереди
+        if (wasActive && role) {
+          const next = await prisma.goldRaidPumper.findFirst({
+            where: { raidId, pumperRole: role, inQueue: true },
+            orderBy: { joinedAt: 'asc' },
+          });
+          if (next) {
+            await prisma.goldRaidPumper.update({
+              where: { id: next.id },
+              data: { inQueue: false },
+            });
+            try {
+              const nextUser = await client.users.fetch(next.userId);
+              await nextUser.send(`🎉 Место в рейде освободилось! Ты переведён в состав как **${ROLE_LABELS[role] ?? role}**. Жди перекличку от РЛа.`);
+            } catch {}
+
+            // Выдаём роль пампера продвинутому участнику
+            try {
+              const { getWowRoles } = require('../utils/wowRoles');
+              const wowRoles = await getWowRoles(interaction.guild);
+              const nextMember = await interaction.guild.members.fetch(next.userId);
+              if (wowRoles.pumper && !nextMember.roles.cache.has(wowRoles.pumper))
+                await nextMember.roles.add(wowRoles.pumper);
+            } catch (e) { logger.warn(`wowRoles pumper promote: ${e.message}`); }
+          }
+        }
+
+        const raid = await prisma.goldRaid.findUnique({ where: { id: raidId } });
+        if (raid) {
+          await gbRefresh(client, raid).catch(() => {});
+          notifyRL(client, raidId).catch(() => {});
+        }
+
+        return interaction.update({ content: '✅ Запись отменена.', components: [] });
+      } catch (err) {
+        logger.error(`gb_pumper_leave failed: ${err.message}`);
+        return interaction.update({ content: '❌ Ошибка. Попробуй ещё раз.', components: [] });
       }
     }
 
@@ -414,3 +649,60 @@ module.exports = {
     }
   },
 };
+
+async function sendRlApplication(interaction) {
+  try {
+    const guild = interaction.guild;
+    const applicant = interaction.user;
+    const member = interaction.member;
+
+    // Проверка повторной заявки через роль
+    const roles = await getWowRoles(guild);
+    if (roles['rl'] && member.roles.cache.has(roles['rl'])) {
+      return interaction.reply({ content: '✅ У тебя уже есть роль РЛ!', ephemeral: true });
+    }
+
+    const owner = await guild.fetchOwner();
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`rl_approve_${applicant.id}`)
+        .setLabel('Одобрить')
+        .setEmoji('✅')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`rl_reject_${applicant.id}`)
+        .setLabel('Отклонить')
+        .setEmoji('❌')
+        .setStyle(ButtonStyle.Danger),
+    );
+
+    await owner.send({
+      embeds: [{
+        color: 0x5865f2,
+        title: '📋 Новая заявка на роль РЛ',
+        fields: [
+          { name: 'Участник', value: `<@${applicant.id}> (${applicant.username})`, inline: true },
+          { name: 'ID', value: applicant.id, inline: true },
+          { name: 'На сервере с', value: member.joinedAt ? `<t:${Math.floor(member.joinedAt.getTime() / 1000)}:D>` : 'неизвестно', inline: true },
+        ],
+        thumbnail: { url: applicant.displayAvatarURL({ size: 64 }) },
+        footer: { text: 'Pretwora DS · Заявки РЛ' },
+        timestamp: new Date().toISOString(),
+      }],
+      components: [row],
+    });
+
+    return interaction.reply({
+      ephemeral: true,
+      embeds: [{
+        color: 0x5865f2,
+        title: '📋 Заявка отправлена!',
+        description: 'Администратор рассмотрит твою заявку и свяжется с тобой в ЛС.\n\nПока ожидаешь — загляни в канал с голдбидами и познакомься с платформой.',
+        footer: { text: 'Pretwora DS · Голдбид платформа' },
+      }],
+    });
+  } catch (err) {
+    logger.error(`sendRlApplication failed: ${err.message}`);
+    return interaction.reply({ content: '❌ Ошибка при отправке заявки. Обратись к администратору напрямую.', ephemeral: true });
+  }
+}
