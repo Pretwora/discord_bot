@@ -14,7 +14,8 @@ const LOOT_TABLE_RAW = {
       { slot: 'HEAD',        tokenType: 'ВЖД',    label: 'ВЖД голова',                          section: 'Голова',         defaultPrice: 80000 },
       { slot: 'HEAD',        tokenType: 'ОРМЧ',   label: 'ОРМЧ голова',                         section: 'Голова',         defaultPrice: 80000 },
       { slot: 'NIGHTDOOM',   tokenType: 'UNIQUE', label: 'Убийство Ночной Погибели',            section: 'Уникальный',     defaultPrice: 10000 },
-      { slot: 'ROMULO_VIAL', tokenType: 'UNIQUE', label: 'Флакон с ядом Ромуло',                section: 'Уникальный',     defaultPrice: 10000 },
+      { slot: 'ROMULO_VIAL',  tokenType: 'UNIQUE', label: 'Флакон с ядом Ромуло',                section: 'Уникальный',     defaultPrice: 10000 },
+      { slot: 'GARONA_RING',  tokenType: 'UNIQUE', label: 'Перстень-печатка Гароны',              section: 'Уникальный',     defaultPrice: 10000 },
     ],
   },
   GRUUL: {
